@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="1920"
+   height="1080"
+   viewBox="0 0 1920 1080"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.4 (1:1.4.4+202605061432+dcaf3e7d9e)"
+   sodipodi:docname="hero.svg"
+   inkscape:export-filename="hero.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#999999"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showguides="true"
+     inkscape:zoom="0.53033009"
+     inkscape:cx="983.34982"
+     inkscape:cy="682.59374"
+     inkscape:window-width="1920"
+     inkscape:window-height="1012"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer3">
+    <sodipodi:guide
+       position="0,960"
+       orientation="0,1"
+       id="guide1"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="120,1080"
+       orientation="-1,0"
+       id="guide2"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="-350.72496,90"
+       orientation="0,1"
+       id="guide3"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="1280,1134.6829"
+       orientation="-1,0"
+       id="guide4"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="background"
+     inkscape:groupmode="layer"
+     id="layer1"
+     sodipodi:insensitive="true">
+    <rect
+       style="fill:#09015d;stroke-width:6.02747;stroke-linejoin:round"
+       id="rect1"
+       width="640"
+       height="1080"
+       x="1280"
+       y="0"
+       inkscape:label="side-panel" />
+    <rect
+       style="fill:#1b0ea8;stroke-width:6.51395;stroke-linejoin:round"
+       id="rect4"
+       width="1280"
+       height="1080"
+       x="8.5265128e-14"
+       y="-4.2632564e-14"
+       inkscape:label="main-panel" />
+    <g
+       id="g5"
+       transform="translate(0,76.9943)"
+       inkscape:label="moonglade-art">
+      <path
+         id="rect5"
+         style="fill:#f2f1f9;stroke-width:1.83807;stroke-linejoin:round"
+         d="m 1280,237.58789 h 640 v 8 h -640 z" />
+      <path
+         id="rect5-3"
+         style="fill:#f2f1f9;stroke-width:2.25117;stroke-linejoin:round"
+         d="m 1280,301.74542 h 640 v 12 h -640 z" />
+      <path
+         id="rect5-1"
+         style="fill:#f2f1f9;stroke-width:2.59942;stroke-linejoin:round"
+         d="m 1280,369.90295 h 640 v 16 h -640 z" />
+      <path
+         id="rect5-36"
+         style="fill:#d3d0ee;stroke-width:2.90624;stroke-linejoin:round"
+         d="m 1280,442.06049 h 640 v 20 h -640 z" />
+      <path
+         id="rect5-18"
+         style="fill:#d3d0ee;stroke-width:3.18363;stroke-linejoin:round"
+         d="m 1280,518.21802 h 640 v 24 h -640 z" />
+      <path
+         id="rect5-2"
+         style="fill:#d3d0ee;stroke-width:3.67614;stroke-linejoin:round"
+         d="m 1280,682.53308 h 640 v 32 h -640 z" />
+      <path
+         id="rect5-22"
+         style="fill:#d3d0ee;stroke-width:3.89914;stroke-linejoin:round"
+         d="m 1280,770.69061 h 640 v 36 h -640 z" />
+      <path
+         id="rect5-6"
+         style="fill:#d3d0ee;stroke-width:3.43871;stroke-linejoin:round"
+         d="m 1280,598.37555 h 640 v 28 h -640 z" />
+      <path
+         id="rect5-19"
+         style="fill:#d3d0ee;stroke-width:4.11005;stroke-linejoin:round"
+         d="m 1280,862.84814 h 640 v 40 h -640 z" />
+      <path
+         id="rect5-5"
+         style="fill:#d3d0ee;stroke-width:4.31066;stroke-linejoin:round"
+         d="m 1280,959.00568 h 640 v 44.00002 h -640 z" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="side-panel-art"
+     sodipodi:insensitive="true">
+    <path
+       id="path4"
+       style="fill:#f2f1f9;stroke-width:5.06584;stroke-linejoin:round"
+       d="M 1313.8828,0 A 320,320 0 0 0 1600,176.69336 320,320 0 0 0 1886.1172,0 Z"
+       inkscape:label="moon-bottom" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="main-panel-info">
+    <text
+       xml:space="preserve"
+       style="font-size:34.6821px;line-height:0;font-family:Switzer;-inkscape-font-specification:Switzer;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;direction:ltr;text-orientation:upright;fill:#d3d0ee;stroke-width:8.67052;stroke-linejoin:round"
+       x="698.2688"
+       y="973.58386"
+       id="text2"
+       inkscape:label="date"><tspan
+         sodipodi:role="line"
+         id="tspan2"
+         x="698.2688"
+         y="973.58386"
+         style="stroke-width:8.67052">Nov 2026</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:32.7869px;line-height:0;font-family:Switzer;-inkscape-font-specification:Switzer;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;direction:ltr;text-orientation:upright;fill:#d3d0ee;stroke-width:8.19669;stroke-linejoin:round"
+       x="117.44265"
+       y="973.60651"
+       id="text1"
+       inkscape:label="venue"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         x="117.44265"
+         y="973.60651"
+         style="letter-spacing:0px;stroke-width:8.19669">ETHGlobal Mumbai</tspan></text>
+    <g
+       id="g3"
+       transform="translate(3.279958e-6,-116.41886)"
+       inkscape:label="tagline">
+      <text
+         xml:space="preserve"
+         style="font-size:50.4202px;line-height:0;font-family:Switzer;-inkscape-font-specification:Switzer;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;direction:ltr;text-orientation:upright;fill:#d3d0ee;stroke-width:12.605;stroke-linejoin:round"
+         x="116.06727"
+         y="456.72137"
+         id="text1-2"><tspan
+           sodipodi:role="line"
+           id="tspan1-7"
+           x="116.06727"
+           y="456.72137"
+           style="letter-spacing:0px;stroke-width:12.605">Fixed rate credit,</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:50.4202px;line-height:0;font-family:Switzer;-inkscape-font-specification:Switzer;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;direction:ltr;text-orientation:upright;fill:#d3d0ee;stroke-width:12.605;stroke-linejoin:round"
+         x="117.83197"
+         y="508.46936"
+         id="text1-2-0"><tspan
+           sodipodi:role="line"
+           id="tspan1-7-6"
+           x="117.83197"
+           y="508.46936"
+           style="letter-spacing:0px;stroke-width:12.605">one swap away</tspan></text>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:151.102px;line-height:0;font-family:'Space Mono';-inkscape-font-specification:'Space Mono';letter-spacing:-3.46258px;word-spacing:0px;writing-mode:lr-tb;direction:ltr;text-orientation:upright;fill:#f2f1f9;stroke-width:37.7754;stroke-linejoin:round"
+       x="108.21418"
+       y="228.79333"
+       id="text5"
+       inkscape:label="heading"><tspan
+         sodipodi:role="line"
+         id="tspan5"
+         x="108.21418"
+         y="228.79333"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Switzer;-inkscape-font-specification:Switzer;letter-spacing:-3.46258px;fill:#f2f1f9;stroke-width:37.7754">Moonglade</tspan></text>
+  </g>
+</svg>
