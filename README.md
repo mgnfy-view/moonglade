@@ -69,7 +69,7 @@ The runner prints common configuration once, then executes six independent scena
 | `maturity` | Repay the maker's debt and redeem the lender's notes for **10,394.873165 USDC**. |
 | `shared` | Fill two strategies against **one maker wallet**, with no duplicate deposits. |
 
-Run one scene with `bash demo/run.sh borrow`. Override the public RPC with `BASE_RPC_URL=https://your-base-rpc bash demo/run.sh`. See the [short runbook](demo/README.md).
+Run one scene with `bash demo/run.sh borrow`. Override the public RPC with `BASE_RPC_URL=https://your-base-rpc bash demo/run.sh`.
 
 The demo forks **Base block 52,000,000** and calls official deployed Aqua and Midnight contracts. Moonglade contracts deploy locally. Opening balances, a fixed $2,000/WETH oracle, custom-market governance configuration, and time travel are fork fixtures. Each scene starts fresh; no transactions are broadcast. Maturity repayment comes from maker cash.
 
@@ -85,12 +85,6 @@ The demo forks **Base block 52,000,000** and calls official deployed Aqua and Mi
 | [`MoongladeDeskHook`](src/hooks/MoongladeDeskHook.sol) | Inventory minting, scoped borrower execution, maker debt cancellation, and collateral management. |
 
 `wrapFromOffer` and `unwrapToOffer` connect mgNOTE to Midnight offers for desk/order-book arbitrage. Each market's note wrapper is ownerless and immutable; makers control their own desk configuration.
-
-## What's next
-
-Explicit maker swap fees and settlement-cost recovery; collateral keepers; wider invariant and precision validation. Then mgNOTE collateral markets, maturity ladders, fixed-yield vaults, and routing between desks and Midnight's book.
-
-This contract prototype demonstrates the six fork scenarios above. Broader integrations and invariant validation remain roadmap work.
 
 ---
 
