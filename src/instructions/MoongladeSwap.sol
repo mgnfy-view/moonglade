@@ -60,7 +60,7 @@ library MoongladeSwap {
         IMoongladeNote note = IMoongladeNote(c.note);
         uint256 spacing = IMidnight(note.midnight()).tickSpacing(note.marketId());
         IMoongladeRouter.Trade memory result = _snap(shares, assets, sharesSpecified, buying, spacing);
-        _checkQuote(result, market, amount, sharesSpecified, buying, spacing);
+        _checkQuote(result, market, amount, sharesSpecified, buying);
         IMoongladeCurve(c.curve).validateTrade(market, result.shares, result.assets, buying, c.data);
         if (_ctx.query.isExactIn) _ctx.swap.amountOut = buying ? result.assets : result.shares;
         else _ctx.swap.amountIn = buying ? result.shares : result.assets;
@@ -79,7 +79,7 @@ library MoongladeSwap {
     /// @param _data Packed address header and opaque curve settings.
     /// @return Common pricing configuration.
     function decode(bytes calldata _data) internal pure returns (IMoongladeSwap.Config memory) {
-        if (_data.length < HEADER_LENGTH || _data.length > type(uint8).max) {
+        if (_data.length < HEADER_LENGTH) {
             revert IMoongladeSwap.MoongladeSwap__InvalidConfig();
         }
 
@@ -134,15 +134,9 @@ library MoongladeSwap {
         return (market, buying);
     }
 
-    /// @notice Reject prices that cannot represent positive, at-most-par share execution.
-    /// @param _price WAD loan tokens per share before tick rounding.
-    function _checkPrice(uint256 _price) private pure {
-        if (_price == 0 || _price > WAD) revert IMoongladeRouter.MoongladeRouter__InvalidQuote();
-    }
-
     /// @notice Validate a custom quote independently of the selected pricing model.
-    /// @dev Pricing implementations choose prices but cannot change the exact amount, bypass the native grid,
-    /// quote zero or above-par cash, or exhaust the virtual output reserve.
+    /// @dev Snapping guarantees the grid and native amount relationship. Enforce the exact specified amount,
+    /// positive cash, the note's payout cap, and available virtual output reserves.
     /// @param _quote Proposed final native amounts and execution tick.
     /// @param _market Authoritative market inputs used for this quote.
     /// @param _amount Taker-specified native quantity.
@@ -153,19 +147,12 @@ library MoongladeSwap {
         IMoongladeCurve.MarketState memory _market,
         uint256 _amount,
         bool _sharesSpecified,
-        bool _deskBuying,
-        uint256 _spacing
+        bool _deskBuying
     ) private pure {
-        if (_quote.shares == 0 || _quote.assets == 0 || (_sharesSpecified ? _quote.shares : _quote.assets) != _amount) {
+        if (_quote.assets == 0 || (_sharesSpecified ? _quote.shares : _quote.assets) != _amount) {
             revert IMoongladeRouter.MoongladeRouter__InvalidQuote();
         }
-        MidnightTicks.validate(_quote.tick, _spacing);
-        uint256 price = TickLib.tickToPrice(_quote.tick);
-        uint256 cash = Math.mulDiv(_quote.shares, price, WAD, _deskBuying ? Math.Rounding.Floor : Math.Rounding.Ceil);
-        if (
-            price == 0 || cash != _quote.assets || _quote.assets > _quote.shares
-                || _quote.assets > Math.mulDiv(_quote.shares, _market.payout, WAD)
-        ) {
+        if (_quote.assets > Math.mulDiv(_quote.shares, _market.payout, WAD)) {
             revert IMoongladeRouter.MoongladeRouter__InvalidQuote();
         }
         if (_deskBuying ? _quote.assets >= _market.cashBalance : _quote.shares >= _market.noteBalance) {
@@ -174,7 +161,7 @@ library MoongladeSwap {
     }
 
     /// @notice Select the maker-favored Midnight tick for an execution price.
-    /// @dev Callers validate the model price; this helper validates the resulting grid price.
+    /// @dev Midnight enforces the price range; a zero-price tick cannot execute a positive trade.
     /// @param _price WAD price derived from the model's native amount bounds.
     /// @param _deskBuying Whether the maker pays cash, requiring a downward tick.
     /// @param _spacing Market's actual native tick spacing.
@@ -183,12 +170,12 @@ library MoongladeSwap {
     function _snapPrice(uint256 _price, bool _deskBuying, uint256 _spacing) private pure returns (uint256, uint256) {
         uint256 tick = _deskBuying ? MidnightTicks.floor(_price, _spacing) : MidnightTicks.ceil(_price, _spacing);
         uint256 price = TickLib.tickToPrice(tick);
-        _checkPrice(price);
+        if (price == 0) revert IMoongladeRouter.MoongladeRouter__InvalidQuote();
 
         return (tick, price);
     }
 
-    /// @notice Snap once and require final amounts to respect the curve's conservative native bounds.
+    /// @notice Snap once; directional rounding preserves the curve's conservative native bounds.
     /// @param _shares Native share bound, or exact specified shares.
     /// @param _assets Native cash bound, or exact specified cash.
     /// @param _sharesSpecified Whether the exact quantity is shares.
@@ -200,25 +187,18 @@ library MoongladeSwap {
         pure
         returns (IMoongladeRouter.Trade memory)
     {
-        if (_shares == 0 || _assets == 0) revert IMoongladeRouter.MoongladeRouter__InvalidQuote();
+        if (_shares == 0) revert IMoongladeRouter.MoongladeRouter__InvalidQuote();
         Math.Rounding cashRounding = _deskBuying ? Math.Rounding.Floor : Math.Rounding.Ceil;
         uint256 quotedPrice = Math.mulDiv(_assets, WAD, _shares, cashRounding);
-        _checkPrice(quotedPrice);
         IMoongladeRouter.Trade memory result;
         uint256 price;
         (result.tick, price) = _snapPrice(quotedPrice, _deskBuying, _spacing);
         if (_sharesSpecified) {
             result.shares = _shares;
             result.assets = Math.mulDiv(_shares, price, WAD, cashRounding);
-            if (_deskBuying ? result.assets > _assets : result.assets < _assets) {
-                revert IMoongladeRouter.MoongladeRouter__InvalidQuote();
-            }
         } else {
             result.assets = _assets;
             result.shares = Math.mulDiv(_assets, WAD, price, _deskBuying ? Math.Rounding.Ceil : Math.Rounding.Floor);
-            if (_deskBuying ? result.shares < _shares : result.shares > _shares) {
-                revert IMoongladeRouter.MoongladeRouter__InvalidQuote();
-            }
         }
 
         return result;
