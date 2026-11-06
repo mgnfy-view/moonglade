@@ -46,7 +46,7 @@ library MidnightTicks {
         if (_price == WAD) return MAX_TICK;
 
         // One price atom above the target skips all ticks on its equal-price plateau.
-        uint256 upper = ceil(_price + 1, _spacing);
+        uint256 upper = MidnightTicks.ceil(_price + 1, _spacing);
 
         return upper - _spacing;
     }
@@ -57,12 +57,12 @@ library MidnightTicks {
     /// @param _spacing Spacing of an initialized Midnight market.
     /// @return Nearest valid tick, with all ties resolved downward.
     function nearest(uint256 _price, uint256 _spacing) internal pure returns (uint256) {
-        uint256 upper = ceil(_price, _spacing);
+        uint256 upper = MidnightTicks.ceil(_price, _spacing);
         uint256 upperPrice = TickLib.tickToPrice(upper);
         if (upperPrice == _price) return upper;
 
         uint256 lowerPrice = TickLib.tickToPrice(upper - _spacing);
         if (upperPrice - _price < _price - lowerPrice) return upper;
-        return ceil(lowerPrice, _spacing);
+        return MidnightTicks.ceil(lowerPrice, _spacing);
     }
 }

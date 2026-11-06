@@ -4,8 +4,8 @@ pragma solidity 0.8.34;
 import { IERC20 } from "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IMidnight } from "midnight/src/interfaces/IMidnight.sol";
-import { Market, Offer } from "midnight/src/interfaces/IMidnight.sol";
 
+import { Market, Offer } from "midnight/src/interfaces/IMidnight.sol";
 import { ERC20 } from "@openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { Math } from "@openzeppelin-contracts/utils/math/Math.sol";
@@ -26,10 +26,14 @@ import { IMoongladeNote } from "src/note/interfaces/IMoongladeNote.sol";
 /// as a cash receiver. Midnight has permanent cash allowance and is already trusted with the note's credit.
 /// Valuation and preview reads revert during settlement, while backing and share supply may be inconsistent.
 contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
+    // ==================== Constants ====================
+
     /// @notice Initial shares permanently reserved against first-depositor rounding manipulation.
     uint256 public constant MINIMUM_SHARES = 1000;
     /// @notice Recipient of the initial share reserve.
     address public constant DEAD_SHARES = address(0xdead);
+
+    // ==================== Immutables ====================
 
     /// @notice Midnight deployment holding this wrapper's credit.
     IMidnight public immutable midnight;
@@ -44,6 +48,8 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @notice Loan token decimals captured at construction.
     uint8 private immutable shareDecimals;
 
+    // ==================== State ====================
+
     /// @notice Fixed Midnight market parameters; never modified after construction.
     Market private marketData;
     /// @notice Monotonic nonce used to isolate internal offer groups.
@@ -52,12 +58,6 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     bytes32 public transient activeOfferHash;
     /// @notice Wallet-set gross-unit budgets and expirations for each delegated mint spender.
     mapping(address borrower => mapping(address spender => BorrowAllowance)) public borrowAllowances;
-
-    /// @dev Prevent callbacks from pricing shares against an intermediate settlement state.
-    modifier nonReentrantView() {
-        if (_reentrancyGuardEntered()) revert ReentrancyGuardReentrantCall();
-        _;
-    }
 
     /// @notice Fix the wrapper's market, registry, and ratifier and adopt the loan token's decimals.
     /// @dev Factory deployment and its registry establish ratifier eligibility; token metadata is an external call.
@@ -76,6 +76,8 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         SafeERC20.forceApprove(loanToken, address(midnight), type(uint256).max);
     }
 
+    // ==================== Configuration ====================
+
     /// @notice Set or revoke the caller's bounded share-mint delegation to a spender.
     /// @dev Only msg.sender's allowance changes. Nonzero budgets require an unexpired deadline; zero revokes immediately.
     /// Scoped delegation permits only share-targeted mints to the borrower, within remaining units and expiry.
@@ -92,6 +94,8 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
 
         emit BorrowApproval(msg.sender, _spender, _units, _deadline);
     }
+
+    // ==================== User actions ====================
 
     /// @notice Consume existing credit, then borrow any remainder, to issue at least the requested shares.
     /// @dev Self and Midnight-authorized operators retain their ordinary receiver choice. Other callers must have an
@@ -237,7 +241,15 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         return assets;
     }
 
+    // ==================== Internal functions ====================
+
     /// @dev Burn caller shares and settle a reduce-only buy offer at the selected credit-unit tick.
+    /// @param _shares Caller-owned shares to burn, releasing gross credit rounded down.
+    /// @param _maxCost Maximum permitted net settlement fee.
+    /// @param _borrower Borrower whose existing debt is cancelled.
+    /// @param _tick Native credit-unit price tick used for settlement.
+    /// @return Gross debt units cancelled.
+    /// @return Actual loan-token settlement fee.
     function _burnToRepay(uint256 _shares, uint256 _maxCost, address _borrower, uint256 _tick)
         private
         returns (uint256, uint256)
@@ -257,6 +269,12 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     }
 
     /// @dev Normalize native and external offers through one Midnight settlement encoder.
+    /// @param _offer Offer passed to Midnight; internal offers activate the exact transient hash.
+    /// @param _ratifierData Authorization data for the offer's ratifier.
+    /// @param _units Gross credit units to settle.
+    /// @param _sellerReceiver Cash recipient when the note is the seller; otherwise zero.
+    /// @return Gross loan tokens paid by the buyer.
+    /// @return Loan tokens delivered to the seller's receiver.
     function _take(Offer memory _offer, bytes memory _ratifierData, uint256 _units, address _sellerReceiver)
         private
         returns (uint256, uint256)
@@ -273,6 +291,12 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @dev Settle a wallet-made sell offer at the chosen credit-unit tick, then issue net-credit-backed shares.
     /// Minting follows settlement to measure actual net credit. The transient hash limits ratification, and callers
     /// guard reentrancy across external token and Midnight calls.
+    /// @param _units Gross credit units to acquire for the note.
+    /// @param _maxFront Maximum gross loan-token float supplied by the caller.
+    /// @param _borrower Wallet whose credit is consumed before originating debt.
+    /// @param _receiver Recipient of newly issued shares.
+    /// @param _tick Native credit-unit price tick used for settlement.
+    /// @return Shares issued against measured net-credit growth.
     function _mintFromPosition(uint256 _units, uint256 _maxFront, address _borrower, address _receiver, uint256 _tick)
         private
         returns (uint256)
@@ -292,6 +316,11 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     }
 
     /// @dev Standard ERC-20 funding and refund leave prior cash unchanged; _take activates only internal offers.
+    /// @param _offer Sell offer whose buyer is the note.
+    /// @param _ratifierData Authorization data for the offer's ratifier.
+    /// @param _units Gross credit units to acquire.
+    /// @param _front Rounded-up gross cash budget transferred from the caller.
+    /// @return Actual loan-token amount paid by the note.
     function _fundAndTake(Offer memory _offer, bytes memory _ratifierData, uint256 _units, uint256 _front)
         private
         returns (uint256)
@@ -307,6 +336,10 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     }
 
     /// @dev Issue shares only against measured net-credit growth, retaining the initial dead-share reserve.
+    /// @param _receiver Recipient of newly issued shares.
+    /// @param _backingBefore Net credit before settlement.
+    /// @param _supplyBefore Share supply before settlement.
+    /// @return Shares issued to the receiver, excluding the initial dead-share reserve.
     function _issue(address _receiver, uint256 _backingBefore, uint256 _supplyBefore) private returns (uint256) {
         uint256 shares = _sharesForMint(_totalAssets() - _backingBefore, _backingBefore, _supplyBefore);
         if (_supplyBefore == 0) _mint(DEAD_SHARES, MINIMUM_SHARES);
@@ -316,6 +349,8 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     }
 
     /// @dev Require an external-ratifier offer of the expected direction in this market.
+    /// @param _offer External offer to validate.
+    /// @param _buy Required offer direction from the maker's perspective.
     function _checkExternalOffer(Offer calldata _offer, bool _buy) private view {
         if (_offer.buy != _buy || _offer.ratifier == ratifier || IdLib.toId(_offer.market) != marketId) {
             revert MoongladeNote__InvalidOffer();
@@ -323,6 +358,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     }
 
     /// @dev Require nonzero uint128-compatible credit units and a market that has not matured.
+    /// @param _units Gross credit units to validate.
     function _checkMintUnits(uint256 _units) private view {
         if (_units == 0 || _units > type(uint128).max) revert MoongladeNote__InvalidUnits();
         if (block.timestamp >= maturity) revert MoongladeNote__MarketMatured();
@@ -330,6 +366,10 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
 
     /// @dev Convert net-credit value to shares, rounding down and reserving minimum shares on initial issuance.
     /// Callers reject zero backing when supply is nonzero before settlement.
+    /// @param _value Net credit received by the note.
+    /// @param _backing Net credit before settlement.
+    /// @param _supply Share supply before settlement.
+    /// @return Receiver shares rounded down, excluding the initial dead-share reserve.
     function _sharesForMint(uint256 _value, uint256 _backing, uint256 _supply) private pure returns (uint256) {
         if (_supply == 0) {
             if (_value <= MINIMUM_SHARES) revert MoongladeNote__ZeroShares();
@@ -342,6 +382,9 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     }
 
     /// @dev Convert shares to gross credit rounded down; associated pending fees leave the position too.
+    /// @param _shares Nonzero shares to burn.
+    /// @param _credit Updated gross credit held by the note.
+    /// @return Proportional gross credit units, rounded down and required to be nonzero.
     function _unitsForBurn(uint256 _shares, uint256 _credit) private view returns (uint256) {
         if (_shares == 0 || totalSupply() == 0) revert MoongladeNote__ZeroShares();
         uint256 units = Math.mulDiv(_shares, _credit, totalSupply());
@@ -351,6 +394,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     }
 
     /// @dev Read the current settlement fee, using zero remaining time after maturity.
+    /// @return WAD-scaled loan-token settlement fee per gross credit unit.
     function _settlementFee() private view returns (uint256) {
         uint256 timeLeft = block.timestamp < maturity ? maturity - block.timestamp : 0;
 
@@ -360,6 +404,11 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @dev Build a borrower-made offer with a fresh nonce; Midnight validates its tick during settlement.
     /// The caller activates the offer hash while taking it.
     /// Sell-offer principal always returns to msg.sender, which supplied the temporary funding.
+    /// @param _buy Whether the borrower buys credit to cancel debt instead of selling credit.
+    /// @param _units Gross credit units permitted by the offer.
+    /// @param _borrower Wallet that makes the offer.
+    /// @param _tick Native credit-unit price tick used for settlement.
+    /// @return Fresh offer ratifiable only while this note activates its exact hash.
     function _buildOffer(bool _buy, uint256 _units, address _borrower, uint256 _tick) private returns (Offer memory) {
         Offer memory offer;
 
@@ -380,65 +429,22 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         return offer;
     }
 
-    /// @notice Return the market configuration fixed during construction.
-    /// @return Full Midnight market configuration.
-    function market() external view returns (Market memory) {
-        return marketData;
-    }
-
-    /// @notice Return loan-token face value per whole share, scaled by 1e18.
-    /// @dev Reads updated Midnight credit, rounds down, and returns zero for empty supply; liquidity is separate.
-    /// @return Net face value per share scaled by 1e18.
-    function payoutPerShare() external view nonReentrantView returns (uint256) {
-        uint256 supply = totalSupply();
-
-        return supply == 0 ? 0 : Math.mulDiv(_totalAssets(), WAD, supply);
-    }
-
-    /// @notice Estimate proportional gross credit released and a conservative net settlement-fee bound.
-    /// @dev Reads Midnight credit and rounds units down. Actual gross BUY funding is floor(units*tickPrice/WAD),
-    /// calculated separately at the caller's chosen credit-unit tick; shares and debt units are not interchangeable.
-    /// @param _shares Shares to burn; must release nonzero units.
-    /// @return Gross credit units released.
-    /// @return Conservative loan-token fee bound, rounded up; actual tick-based native fee may be lower.
-    function previewBurn(uint256 _shares) external view nonReentrantView returns (uint256, uint256) {
-        (uint128 credit,,) = midnight.updatePositionView(marketData, marketId, address(this));
-        uint256 units = _unitsForBurn(_shares, credit);
-        uint256 cost = Math.mulDiv(units, _settlementFee(), WAD, Math.Rounding.Ceil);
-
-        return (units, cost);
-    }
-
-    /// @notice Return the loan token decimals captured during construction.
-    /// @return Number of decimal places used by shares.
-    function decimals() public view override(ERC20, IERC20Metadata) returns (uint8) {
-        return shareDecimals;
-    }
-
-    /// @notice Return net face value after losses and all remaining continuous fees.
-    /// @dev Reads Midnight's updated position; direct loan-token donations do not affect backing or issuance.
-    /// @return Net loan-token credit backing all shares.
-    function totalAssets() public view nonReentrantView returns (uint256) {
-        return _totalAssets();
+    /// @dev Reject valuation reads while a guarded settlement can expose inconsistent backing and supply.
+    function _checkNotSettling() private view {
+        if (_reentrancyGuardEntered()) revert ReentrancyGuardReentrantCall();
     }
 
     /// @dev Read net backing for internal settlement without exposing intermediate state to callbacks.
+    /// @return Updated gross credit minus its remaining continuous fee.
     function _totalAssets() private view returns (uint256) {
         (uint128 credit, uint128 pendingFee,) = midnight.updatePositionView(marketData, marketId, address(this));
 
         return uint256(credit) - pendingFee;
     }
 
-    /// @notice Return the minimum gross credit units issuing at least the requested shares before maturity.
-    /// @dev Reads Midnight fees and backing, rounds units up, and includes the initial minimum-share reserve.
-    /// Cash funding is computed separately as ceil(units * (tickPrice + settlementFee) / WAD).
-    /// @param _shares Minimum receiver shares; must be nonzero.
-    /// @return Gross units required after fee rounding, independent of the wallet's existing credit.
-    function previewMintUnits(uint256 _shares) public view nonReentrantView returns (uint256) {
-        return _previewMintUnits(_shares);
-    }
-
     /// @dev Shared mint calculation; guarded entry points may call this during their own settlement.
+    /// @param _shares Minimum nonzero shares to issue to the receiver.
+    /// @return Minimum gross credit units required, rounded up and bounded by uint128.
     function _previewMintUnits(uint256 _shares) private view returns (uint256) {
         if (_shares == 0) revert MoongladeNote__ZeroShares();
         if (block.timestamp >= maturity) revert MoongladeNote__MarketMatured();
@@ -455,5 +461,70 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         if (units > type(uint128).max) revert MoongladeNote__InvalidUnits();
 
         return units;
+    }
+
+    // ==================== External views ====================
+
+    /// @notice Return the market configuration fixed during construction.
+    /// @dev Returns only the immutable market configuration; does not update Midnight state.
+    /// @return Full Midnight market configuration.
+    function market() external view returns (Market memory) {
+        return marketData;
+    }
+
+    /// @notice Return loan-token face value per whole share, scaled by 1e18.
+    /// @dev Reads updated Midnight credit, rounds down, and returns zero for empty supply; liquidity is separate.
+    /// Reverts during settlement so callbacks cannot price an inconsistent backing-to-supply ratio.
+    /// @return Net face value per share scaled by 1e18.
+    function payoutPerShare() external view returns (uint256) {
+        _checkNotSettling();
+        uint256 supply = totalSupply();
+
+        return supply == 0 ? 0 : Math.mulDiv(_totalAssets(), WAD, supply);
+    }
+
+    /// @notice Estimate proportional gross credit released and a conservative net settlement-fee bound.
+    /// @dev Reads Midnight credit and rounds units down. Actual gross BUY funding is floor(units*tickPrice/WAD),
+    /// calculated separately at the caller's chosen credit-unit tick; shares and debt units are not interchangeable.
+    /// Reverts during settlement rather than exposing its intermediate gross-credit balance.
+    /// @param _shares Shares to burn; must release nonzero units.
+    /// @return Gross credit units released.
+    /// @return Conservative loan-token fee bound, rounded up; actual tick-based native fee may be lower.
+    function previewBurn(uint256 _shares) external view returns (uint256, uint256) {
+        _checkNotSettling();
+        (uint128 credit,,) = midnight.updatePositionView(marketData, marketId, address(this));
+        uint256 units = _unitsForBurn(_shares, credit);
+        uint256 cost = Math.mulDiv(units, _settlementFee(), WAD, Math.Rounding.Ceil);
+
+        return (units, cost);
+    }
+
+    // ==================== Public views ====================
+
+    /// @notice Return the loan token decimals captured during construction.
+    /// @dev Reads cached metadata without calling the loan token.
+    /// @return Number of decimal places used by shares.
+    function decimals() public view override(ERC20, IERC20Metadata) returns (uint8) {
+        return shareDecimals;
+    }
+
+    /// @notice Return net face value after losses and all remaining continuous fees.
+    /// @dev Reads Midnight's updated position; direct loan-token donations do not affect backing or issuance.
+    /// Reverts during settlement rather than exposing intermediate backing.
+    /// @return Net loan-token credit backing all shares.
+    function totalAssets() public view returns (uint256) {
+        _checkNotSettling();
+        return _totalAssets();
+    }
+
+    /// @notice Return the minimum gross credit units issuing at least the requested shares before maturity.
+    /// @dev Reads Midnight fees and backing, rounds units up, and includes the initial minimum-share reserve.
+    /// Cash funding is computed separately as ceil(units * (tickPrice + settlementFee) / WAD).
+    /// Reverts during settlement rather than deriving a quote from inconsistent backing and supply.
+    /// @param _shares Minimum receiver shares; must be nonzero.
+    /// @return Gross units required after fee rounding, independent of the wallet's existing credit.
+    function previewMintUnits(uint256 _shares) public view returns (uint256) {
+        _checkNotSettling();
+        return _previewMintUnits(_shares);
     }
 }

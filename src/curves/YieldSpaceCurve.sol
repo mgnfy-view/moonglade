@@ -27,89 +27,14 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     /// @notice Maximum note precision supported by WAD normalization.
     uint8 private constant MAX_TOKEN_DECIMALS = 18;
 
-    /// @notice Quote a native cash or share quantity using packed sensitivity and rate-floor settings.
-    /// @dev Apply the margin in WAD cash before native rounding. For fixed cash, adjust the solver's cash
-    /// budget or target first, so its share result already includes the margin. Tick rounding belongs to the opcode.
-    /// Fixed-cash quotes revert if the resulting share bound cannot satisfy the payout/par cap.
-    /// Nonlinear quotes reject either solver leg below the reserve- and exponent-scaled resolution threshold.
-    /// @return shares Native share bound, or the exact specified shares.
-    /// @return assets Native cash bound, or the exact specified cash.
-    function quote(
-        MarketState calldata _market,
-        uint256 _amount,
-        bool _sharesSpecified,
-        bool _deskBuying,
-        bytes calldata _data
-    ) external view returns (uint256 shares, uint256 assets) {
-        Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
-        (uint256 reserveIn, uint256 reserveOut, uint256 scale) = _reserves(_market);
-        if (_deskBuying) (reserveIn, reserveOut) = (reserveOut, reserveIn);
-        uint256 a = _exponent(parameters.sensitivity, _market.timeLeft);
-        // Shares are input when the desk buys and output when it sells.
-        bool exactIn = _sharesSpecified == _deskBuying;
-        Math.Rounding rounding = _deskBuying ? Math.Rounding.Floor : Math.Rounding.Ceil;
-        uint256 factor = _deskBuying ? WAD - MARGIN : WAD + MARGIN;
-        uint256 amountWad = _sharesSpecified
-            ? Math.mulDiv(_amount, _market.payout, WAD / scale, rounding)
-            : Math.mulDiv(_amount * scale, WAD, factor, _deskBuying ? Math.Rounding.Ceil : Math.Rounding.Floor);
-        uint256 result = _solve(amountWad, reserveIn, reserveOut, a, exactIn);
-        uint256 cap = Math.min(_market.payout, WAD);
-        if (_sharesSpecified) {
-            shares = _amount;
-            uint256 maxAssets = Math.mulDiv(shares, cap, WAD);
-            if (Math.mulDiv(result, 1, scale, rounding) > maxAssets) revert YieldSpaceCurve__PriceAbovePar();
-            assets = Math.min(Math.mulDiv(Math.mulDiv(result, factor, WAD, rounding), 1, scale, rounding), maxAssets);
-        } else {
-            shares = Math.mulDiv(
-                result, WAD / scale, _market.payout, _deskBuying ? Math.Rounding.Ceil : Math.Rounding.Floor
-            );
-            assets = _amount;
-            if (assets > Math.mulDiv(shares, cap, WAD)) revert YieldSpaceCurve__PriceAbovePar();
-        }
-        if (assets == 0) revert YieldSpaceCurve__ZeroAmount();
-    }
-
-    /// @notice Enforce positive final quantities, output reserves, post-trade face >= cash, and the rate floor.
-    /// @dev Uses actual snapped transfers and the same packed model parameters; no funds or state are changed.
-    function validateTrade(
-        MarketState calldata _market,
-        uint256 _shares,
-        uint256 _assets,
-        bool _deskBuying,
-        bytes calldata _data
-    ) external view {
-        Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
-        if (_shares == 0 || _assets == 0) revert YieldSpaceCurve__ZeroAmount();
-        MarketState memory afterMarket = _market;
-        afterMarket.cashBalance = _deskBuying ? _market.cashBalance - _assets : _market.cashBalance + _assets;
-        afterMarket.noteBalance = _deskBuying ? _market.noteBalance + _shares : _market.noteBalance - _shares;
-        (uint256 x, uint256 y,) = _reserves(afterMarket);
-        if (_rate(parameters.sensitivity, x, y) < parameters.rateFloor) revert YieldSpaceCurve__RateFloor();
-    }
-
-    /// @notice Return the current WAD marginal price from live reserves and packed sensitivity.
-    /// @dev At maturity the price equals payout; this view has no spread margin.
-    /// @return WAD loan tokens per share.
-    function marginalPrice(MarketState calldata _market, bytes calldata _data) external view returns (uint256) {
-        Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
-        (uint256 x, uint256 y,) = _reserves(_market);
-        uint256 a = _exponent(parameters.sensitivity, _market.timeLeft);
-
-        return Math.mulDiv(_power(Math.mulDiv(x, WAD, y), WAD - a), _market.payout, WAD);
-    }
-
-    /// @notice Read the reserve-implied continuous annual rate using packed sensitivity.
-    /// @return WAD annual rate; the rate-floor setting is enforced only by validateTrade.
-    function rate(MarketState calldata _market, bytes calldata _data) external view returns (uint256) {
-        Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
-        (uint256 x, uint256 y,) = _reserves(_market);
-
-        return _rate(parameters.sensitivity, x, y);
-    }
+    // ===== Internal functions =====
 
     /// @notice Normalize matching-decimal reserves to WAD cash and net face value.
     /// @dev Assumes a trusted note with at most eighteen decimals; scaling uses checked arithmetic.
-    /// @return Positive cash reserve, face reserve at least cash, and the native-to-WAD scale.
+    /// @param _market Trusted note and native virtual reserves with a WAD payout factor.
+    /// @return Positive WAD cash reserve.
+    /// @return WAD note face reserve, required to be at least the cash reserve.
+    /// @return Native-to-WAD scale derived from the note's decimals.
     function _reserves(MarketState memory _market) private view returns (uint256, uint256, uint256) {
         uint8 decimals = IERC20Metadata(_market.note).decimals();
         uint256 scale = 10 ** (MAX_TOKEN_DECIMALS - decimals);
@@ -121,6 +46,8 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     }
 
     /// @notice Compute the positive annualized invariant exponent from sensitivity and seconds remaining.
+    /// @param _sensitivity Positive WAD annual sensitivity.
+    /// @param _timeLeft Seconds until maturity.
     /// @return WAD power exponent.
     function _exponent(uint256 _sensitivity, uint256 _timeLeft) private pure returns (uint256) {
         uint256 elapsed = Math.mulDiv(_sensitivity, _timeLeft, YEAR);
@@ -129,7 +56,13 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
         return WAD - elapsed;
     }
 
+    /// @notice Solve the invariant for the missing normalized trade amount.
     /// @dev Solve x^a + y^a normalized by input reserve; a == WAD gives constant-sum pricing.
+    /// @param _amount Exact WAD input or output quantity before solving the other leg.
+    /// @param _x Positive WAD input reserve.
+    /// @param _y Positive WAD output reserve.
+    /// @param _a Positive WAD invariant exponent, at most WAD.
+    /// @param _exactIn Whether the specified amount is input rather than output.
     /// @return Raw WAD amount before margin and native rounding; quote() rejects zero native results.
     function _solve(uint256 _amount, uint256 _x, uint256 _y, uint256 _a, bool _exactIn)
         internal
@@ -158,14 +91,121 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     }
 
     /// @notice Evaluate a WAD power; PRB-Math v4.1 natively handles bases below WAD.
+    /// @param _base Unsigned WAD base.
+    /// @param _exponentValue Unsigned WAD power exponent.
     /// @return WAD power result.
     function _power(uint256 _base, uint256 _exponentValue) private pure returns (uint256) {
         return PRBMath.unwrap(PRBMath.pow(PRBMath.ud(_base), PRBMath.ud(_exponentValue)));
     }
 
     /// @notice Compute sensitivity * ln(face/cash) for validated positive reserves.
+    /// @param _sensitivity Positive WAD annual sensitivity.
+    /// @param _x Positive WAD cash reserve.
+    /// @param _y WAD note face reserve, at least the cash reserve.
     /// @return WAD continuous annual rate.
     function _rate(uint256 _sensitivity, uint256 _x, uint256 _y) private pure returns (uint256) {
         return Math.mulDiv(_sensitivity, PRBMath.unwrap(PRBMath.ln(PRBMath.ud(Math.mulDiv(_y, WAD, _x)))), WAD);
+    }
+
+    // ===== External views =====
+
+    /// @notice Quote a native cash or share quantity using packed sensitivity and rate-floor settings.
+    /// @dev Apply the margin in WAD cash before native rounding. For fixed cash, adjust the solver's cash
+    /// budget or target first, so its share result already includes the margin. Tick rounding belongs to the opcode.
+    /// Fixed-cash quotes revert if the resulting share bound cannot satisfy the payout/par cap.
+    /// Nonlinear quotes reject either solver leg below the reserve- and exponent-scaled resolution threshold.
+    /// Desk buys return maximum cash for fixed shares or minimum shares for fixed cash; desk sells reverse these bounds.
+    /// @param _market Trusted note, native virtual reserves, remaining time, and WAD payout.
+    /// @param _amount Exact native cash or share quantity specified by the taker.
+    /// @param _sharesSpecified Whether the specified quantity is note shares rather than cash.
+    /// @param _deskBuying Whether the maker receives shares and pays cash.
+    /// @param _data Packed sensitivity and annual rate floor.
+    /// @return Native share bound, or the exact specified shares.
+    /// @return Native cash bound, or the exact specified cash.
+    function quote(
+        MarketState calldata _market,
+        uint256 _amount,
+        bool _sharesSpecified,
+        bool _deskBuying,
+        bytes calldata _data
+    ) external view returns (uint256, uint256) {
+        Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
+        (uint256 reserveIn, uint256 reserveOut, uint256 scale) = _reserves(_market);
+        if (_deskBuying) (reserveIn, reserveOut) = (reserveOut, reserveIn);
+        uint256 a = _exponent(parameters.sensitivity, _market.timeLeft);
+        // Shares are input when the desk buys and output when it sells.
+        bool exactIn = _sharesSpecified == _deskBuying;
+        Math.Rounding rounding = _deskBuying ? Math.Rounding.Floor : Math.Rounding.Ceil;
+        uint256 factor = _deskBuying ? WAD - MARGIN : WAD + MARGIN;
+        uint256 amountWad = _sharesSpecified
+            ? Math.mulDiv(_amount, _market.payout, WAD / scale, rounding)
+            : Math.mulDiv(_amount * scale, WAD, factor, _deskBuying ? Math.Rounding.Ceil : Math.Rounding.Floor);
+        uint256 result = _solve(amountWad, reserveIn, reserveOut, a, exactIn);
+        uint256 cap = Math.min(_market.payout, WAD);
+        uint256 shares;
+        uint256 assets;
+        if (_sharesSpecified) {
+            shares = _amount;
+            uint256 maxAssets = Math.mulDiv(shares, cap, WAD);
+            if (Math.mulDiv(result, 1, scale, rounding) > maxAssets) revert YieldSpaceCurve__PriceAbovePar();
+            assets = Math.min(Math.mulDiv(Math.mulDiv(result, factor, WAD, rounding), 1, scale, rounding), maxAssets);
+        } else {
+            shares = Math.mulDiv(
+                result, WAD / scale, _market.payout, _deskBuying ? Math.Rounding.Ceil : Math.Rounding.Floor
+            );
+            assets = _amount;
+            if (assets > Math.mulDiv(shares, cap, WAD)) revert YieldSpaceCurve__PriceAbovePar();
+        }
+        if (assets == 0) revert YieldSpaceCurve__ZeroAmount();
+
+        return (shares, assets);
+    }
+
+    /// @notice Enforce positive final quantities, output reserves, post-trade face >= cash, and the rate floor.
+    /// @dev Uses actual snapped transfers and the same packed model parameters; no funds or state are changed.
+    /// @param _market Trusted note and pre-trade virtual reserves, remaining time, and WAD payout.
+    /// @param _shares Final native shares transferred after tick snapping.
+    /// @param _assets Final native cash transferred after tick snapping.
+    /// @param _deskBuying Whether the maker receives shares and pays cash.
+    /// @param _data Packed sensitivity and annual rate floor.
+    function validateTrade(
+        MarketState calldata _market,
+        uint256 _shares,
+        uint256 _assets,
+        bool _deskBuying,
+        bytes calldata _data
+    ) external view {
+        Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
+        if (_shares == 0 || _assets == 0) revert YieldSpaceCurve__ZeroAmount();
+        MarketState memory afterMarket = _market;
+        afterMarket.cashBalance = _deskBuying ? _market.cashBalance - _assets : _market.cashBalance + _assets;
+        afterMarket.noteBalance = _deskBuying ? _market.noteBalance + _shares : _market.noteBalance - _shares;
+        (uint256 x, uint256 y,) = _reserves(afterMarket);
+        if (_rate(parameters.sensitivity, x, y) < parameters.rateFloor) revert YieldSpaceCurve__RateFloor();
+    }
+
+    /// @notice Return the current WAD marginal price from live reserves and packed sensitivity.
+    /// @dev At maturity the price equals payout; this view has no spread margin.
+    /// @param _market Trusted note and native virtual reserves, remaining time, and WAD payout.
+    /// @param _data Packed sensitivity and annual rate floor.
+    /// @return WAD loan tokens per share.
+    function marginalPrice(MarketState calldata _market, bytes calldata _data) external view returns (uint256) {
+        Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
+        (uint256 x, uint256 y,) = _reserves(_market);
+        uint256 a = _exponent(parameters.sensitivity, _market.timeLeft);
+
+        return Math.mulDiv(_power(Math.mulDiv(x, WAD, y), WAD - a), _market.payout, WAD);
+    }
+
+    /// @notice Read the reserve-implied continuous annual rate using packed sensitivity.
+    /// @dev Reads trusted note precision and reserve ratios without changing state or enforcing the rate floor.
+    /// @param _market Trusted note and native virtual reserves, remaining time, and WAD payout.
+    /// @param _data Packed sensitivity and annual rate floor.
+    /// @return WAD annual rate; the rate-floor setting is enforced only by validateTrade.
+    function rate(MarketState calldata _market, bytes calldata _data) external view returns (uint256) {
+        Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
+        (uint256 x, uint256 y,) = _reserves(_market);
+
+        return _rate(parameters.sensitivity, x, y);
     }
 }

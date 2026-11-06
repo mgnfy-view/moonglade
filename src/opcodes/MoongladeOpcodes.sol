@@ -17,6 +17,7 @@ abstract contract MoongladeOpcodes is AquaOpcodes, IMoongladeRouter {
     uint256 public constant MOONGLADE_SWAP_OPCODE = MoongladeSwap.OPCODE;
 
     /// @notice Bind inherited Aqua-aware instructions to the selected Aqua instance.
+    /// @dev The immutable Aqua binding is managed by the inherited fee instructions.
     /// @param _aqua Aqua registry and settlement contract.
     constructor(address _aqua) AquaOpcodes(_aqua) { }
 
@@ -39,6 +40,7 @@ abstract contract MoongladeOpcodes is AquaOpcodes, IMoongladeRouter {
     }
 
     /// @notice Reject an unassigned opcode.
+    /// @dev Context and instruction data are intentionally unused for unassigned dispatch slots.
     function _unknown(Context memory, bytes calldata) internal pure {
         revert IMoongladeRouter.MoongladeRouter__UnknownOpcode();
     }

@@ -14,6 +14,8 @@ import { IMoongladeNoteRatifier } from "src/note/interfaces/IMoongladeNoteRatifi
 /// @notice Ratifies only the exact offer currently being taken by a factory-created wrapper.
 /// @dev Holds no mutable state and never calls Midnight or exercises an operator authorization.
 contract MoongladeNoteRatifier is IMoongladeNoteRatifier {
+    // ==================== Immutables ====================
+
     /// @notice Only this Midnight deployment may request ratification.
     address public immutable midnight;
     /// @notice Registry whose deployed notes may activate internal offers.

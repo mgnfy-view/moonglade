@@ -15,6 +15,7 @@ import { MoongladeOpcodes } from "src/opcodes/MoongladeOpcodes.sol";
 /// @dev Instruction builders and execution live in instructions/; dispatch lives in opcodes/.
 contract MoongladeRouter is Simulator, SwapVM, IMoongladeRouter, MoongladeOpcodes {
     /// @notice Bind Aqua and WETH and permanently renounce inherited rescue ownership.
+    /// @dev Trusts the supplied settlement dependencies; no owner remains to use inherited rescue functions.
     /// @param _aqua Aqua balance and settlement contract.
     /// @param _weth Wrapped native token used by inherited settlement.
     constructor(address _aqua, address _weth)
@@ -23,6 +24,8 @@ contract MoongladeRouter is Simulator, SwapVM, IMoongladeRouter, MoongladeOpcode
     {
         _transferOwnership(address(0));
     }
+
+    // ===== Internal functions =====
 
     /// @notice Supply the Moonglade-extended opcode table to SwapVM's interpreter.
     /// @return Instruction handlers indexed by opcode byte.

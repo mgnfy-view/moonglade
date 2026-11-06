@@ -20,18 +20,16 @@ interface IMoongladeCurve {
         uint256 payout;
     }
 
-    /// @notice Preserve the specified amount and bound the other amount, including margin and native rounding.
-    /// @dev Desk buys: maximum cash for fixed shares, minimum shares for fixed cash.
-    /// Desk sells: minimum cash for fixed shares, maximum shares for fixed cash.
-    /// @return shares Native note quantity.
-    /// @return assets Native cash quantity.
+    // ===== User actions =====
+
     function quote(
         MarketState calldata _market,
         uint256 _amount,
         bool _sharesSpecified,
         bool _deskBuying,
         bytes calldata _data
-    ) external view returns (uint256 shares, uint256 assets);
+    ) external view returns (uint256, uint256);
+
     function validateTrade(
         MarketState calldata _market,
         uint256 _shares,
@@ -39,6 +37,10 @@ interface IMoongladeCurve {
         bool _deskBuying,
         bytes calldata _data
     ) external view;
+
+    // ===== Views =====
+
     function marginalPrice(MarketState calldata _market, bytes calldata _data) external view returns (uint256);
+
     function rate(MarketState calldata _market, bytes calldata _data) external view returns (uint256);
 }

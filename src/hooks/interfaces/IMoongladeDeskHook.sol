@@ -89,8 +89,12 @@ interface IMoongladeDeskHook is IMakerHooks, IBuyCallback {
     /// @notice A Midnight callback does not match the single active debt-cancellation context.
     error MoongladeDeskHook__InvalidCallback();
 
+    // ===== Configuration =====
+
     function configure(IMoongladeSwap.Config calldata _config, RiskConfig calldata _risk) external returns (bytes32);
     function deactivate() external;
+
+    // ===== Views =====
 
     function maker() external view returns (address);
     function note() external view returns (IMoongladeNote);

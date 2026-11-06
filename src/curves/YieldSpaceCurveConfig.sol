@@ -6,6 +6,7 @@ import { IYieldSpaceCurve } from "src/curves/interfaces/IYieldSpaceCurve.sol";
 /// @title YieldSpace curve parameter codec.
 /// @author Sahil Gujrati (@mgnfy-view).
 /// @notice Encode the default model's sensitivity and rate floor independently of generic routing.
+/// @dev The sixteen-byte layout is two packed uint64 values; decoding rejects zero sensitivity.
 library YieldSpaceCurveConfig {
     /// @notice Packed size of two uint64 parameters.
     uint8 internal constant ENCODED_LENGTH = 16;

@@ -8,6 +8,7 @@ import { IMoongladeNoteRatifier } from "src/note/interfaces/IMoongladeNoteRatifi
 /// @title Moonglade Note Factory Interface.
 /// @author Sahil Gujrati (@mgnfy-view).
 /// @notice Permissionless registry and deterministic deployment surface for market-specific notes.
+/// @dev Exposes the fixed Midnight deployment, shared ratifier, and canonical note registration.
 interface IMoongladeNoteFactory {
     /// @notice A deterministic note was created and registered for the market.
     /// @param _marketId Canonical Midnight market identifier.

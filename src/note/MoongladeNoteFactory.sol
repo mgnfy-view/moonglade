@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.34;
 
 import { IMidnight } from "midnight/src/interfaces/IMidnight.sol";
-import { IdLib } from "midnight/src/libraries/IdLib.sol";
 
+import { IdLib } from "midnight/src/libraries/IdLib.sol";
 import { Market } from "midnight/src/interfaces/IMidnight.sol";
 
 import { IMoongladeNoteFactory } from "src/note/interfaces/IMoongladeNoteFactory.sol";
@@ -17,10 +17,14 @@ import { MoongladeNoteRatifier } from "src/note/MoongladeNoteRatifier.sol";
 /// @notice Permissionless, deterministic, one-wrapper-per-market registry for one Midnight deployment.
 /// @dev Only ungated markets are eligible; the immutable shared ratifier trusts this registry.
 contract MoongladeNoteFactory is IMoongladeNoteFactory {
+    // ==================== Immutables ====================
+
     /// @notice Midnight deployment used by every registered note.
     IMidnight public immutable midnight;
     /// @notice Shared ratifier created exclusively for this registry.
     IMoongladeNoteRatifier public immutable ratifier;
+
+    // ==================== State ====================
 
     /// @notice Deterministic note registered for each market identifier.
     mapping(bytes32 marketId => address wrapper) public notes;

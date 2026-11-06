@@ -36,7 +36,7 @@ library MoongladeSwap {
     /// @param _config Note, pricing contract, and opaque settings committed into the maker order.
     /// @return Encoded pricing instruction.
     function build(IMoongladeSwap.Config memory _config) internal pure returns (bytes memory) {
-        bytes memory args = encode(_config);
+        bytes memory args = MoongladeSwap.encode(_config);
 
         return abi.encodePacked(OPCODE, uint8(args.length), args);
     }
@@ -51,7 +51,7 @@ library MoongladeSwap {
             revert IMoongladeRouter.MoongladeRouter__Recompute();
         }
 
-        IMoongladeSwap.Config memory c = decode(_data);
+        IMoongladeSwap.Config memory c = MoongladeSwap.decode(_data);
         (IMoongladeCurve.MarketState memory market, bool buying) = _marketState(_ctx, c.note);
         bool sharesSpecified = buying == _ctx.query.isExactIn;
         uint256 amount = _ctx.query.isExactIn ? _ctx.swap.amountIn : _ctx.swap.amountOut;
@@ -70,7 +70,7 @@ library MoongladeSwap {
     /// @param _config Note, selected implementation, and implementation-specific settings.
     /// @return Packed header followed by unmodified curve settings.
     function encode(IMoongladeSwap.Config memory _config) internal pure returns (bytes memory) {
-        validate(_config);
+        MoongladeSwap.validate(_config);
 
         return abi.encodePacked(_config.note, _config.curve, _config.data);
     }
@@ -87,7 +87,7 @@ library MoongladeSwap {
         config.note = address(bytes20(_data[0:20]));
         config.curve = address(bytes20(_data[20:HEADER_LENGTH]));
         config.data = _data[HEADER_LENGTH:];
-        validate(config);
+        MoongladeSwap.validate(config);
 
         return config;
     }

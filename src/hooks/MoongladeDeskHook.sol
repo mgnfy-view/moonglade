@@ -3,26 +3,25 @@ pragma solidity 0.8.30;
 
 import { IERC20 } from "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IAqua } from "aqua/src/interfaces/IAqua.sol";
-import { IMidnight } from "midnight/src/interfaces/IMidnight.sol";
+import { IMidnight, Market, CollateralParams } from "midnight/src/interfaces/IMidnight.sol";
 import { IOracle } from "midnight/src/interfaces/IOracle.sol";
 import { ISwapVM } from "swap-vm/src/interfaces/ISwapVM.sol";
 
 import { SafeERC20 } from "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { Math } from "@openzeppelin-contracts/utils/math/Math.sol";
-import { Market, CollateralParams } from "midnight/src/interfaces/IMidnight.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin-contracts/utils/ReentrancyGuardTransient.sol";
 import { TickLib } from "midnight/src/libraries/TickLib.sol";
 import { MakerTraits, MakerTraitsLib } from "swap-vm/src/libs/MakerTraits.sol";
 
 import { IMoongladeCurve } from "src/curves/interfaces/IMoongladeCurve.sol";
-import { IMoongladeSwap } from "src/instructions/interfaces/IMoongladeSwap.sol";
 import { IMoongladeDeskHook } from "src/hooks/interfaces/IMoongladeDeskHook.sol";
+import { IMoongladeSwap } from "src/instructions/interfaces/IMoongladeSwap.sol";
 import { IMoongladeNote } from "src/note/interfaces/IMoongladeNote.sol";
 
 import { MoongladeSwap } from "src/instructions/MoongladeSwap.sol";
+import { MidnightTicks } from "src/libraries/MidnightTicks.sol";
 import { MoongladeProgram } from "src/libraries/MoongladeProgram.sol";
 import { MoongladeRouter } from "src/routers/MoongladeRouter.sol";
-import { MidnightTicks } from "src/libraries/MidnightTicks.sol";
 
 /// @title Moonglade desk hook.
 /// @author Sahil Gujrati (@mgnfy-view).
@@ -84,6 +83,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
     // ===== Initialization =====
 
     /// @notice Bind a hook to one maker, note market, and router without transferring funds or granting authority.
+    /// @dev Trusts the supplied note's market and dependency getters and the router's Aqua getter.
     /// @param _maker Wallet that owns the Aqua order and Midnight position.
     /// @param _note Market-specific note contract.
     /// @param _router SwapVM router with the Moonglade pricing instruction.
@@ -163,9 +163,12 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
         emit StrategyDeactivated(strategyHash);
     }
 
+    // ===== SwapVM hooks =====
+
     /// @notice Mint missing outgoing mgNOTE into the maker's wallet before Aqua pulls it.
     /// @dev Only the authenticated registered strategy may spend maker funds. Output-first settlement requires
     /// sufficient maker cash for mint float before incoming swap cash arrives; debt and collateral limits still apply.
+    /// The unused taker address, maker-hook data, and taker-hook data fields remain unnamed.
     /// @param _maker Wallet claimed as maker by SwapVM.
     /// @param _tokenIn Input asset.
     /// @param _tokenOut Output asset.
@@ -193,6 +196,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
     /// @notice Optionally cancel incoming wallet inventory and release surplus selected collateral.
     /// @dev Conservatively reserves the quoted loan-token output during an optional burn in either payment order.
     /// This can skip a burn after output-first payment, while preserving cash needed by a pending input-first payout.
+    /// The unused taker address, maker-hook data, and taker-hook data fields remain unnamed.
     /// @param _maker Wallet claimed as maker by SwapVM.
     /// @param _tokenIn Input asset.
     /// @param _tokenOut Output asset.
@@ -223,6 +227,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
     /// payment the maker needs enough cash for both the completed payout and this mint's gross float. The note
     /// consumes the taker's scoped gross-unit mint delegation and enforces existing Midnight collateral health. This hook
     /// does not manage taker collateral or apply the maker's debt cap; unused float returns to the maker.
+    /// The unused maker-hook data and taker-hook data fields remain unnamed.
     /// @param _maker Wallet claimed as maker by SwapVM.
     /// @param _taker Borrower or ordinary swap taker whose existing note inventory is counted first.
     /// @param _tokenIn Input asset; only note input may require a mint.
@@ -251,6 +256,8 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
     }
 
     /// @notice Reject the unused post-transfer-out phase.
+    /// @dev All standard SwapVM fields are unused and intentionally unnamed: maker, taker, input token, output token,
+    /// input amount, output amount, strategy hash, maker-hook data, and taker-hook data. Every call reverts.
     function postTransferOut(
         address,
         address,
@@ -265,10 +272,13 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
         revert MoongladeDeskHook__InvalidHook();
     }
 
+    // ===== Midnight callbacks =====
+
     /// @notice Confirm the single expected nested Midnight debt-cancellation callback.
     /// @dev Runs inside the initiating action's reentrancy guard and therefore has no second guard.
     /// It consumes the unit and actual-cash context once; a bounded allowance funds settlement at the native tick.
     /// Midnight binds the market to its ID; the note builds reduce-only offers with empty callback data.
+    /// The unused market struct, pending-fee increase, and callback data fields remain unnamed.
     /// @param _id Market being settled.
     /// @param _buyerAssets Gross cash paid by this hook.
     /// @param _units Debt units being cancelled.
