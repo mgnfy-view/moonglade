@@ -27,7 +27,7 @@ import { MidnightTicks } from "src/libraries/MidnightTicks.sol";
 /// @title Moonglade desk hook.
 /// @author Sahil Gujrati (@mgnfy-view).
 /// @notice Mints and cancels inventory for a maker whose idle assets stay in their own wallet.
-/// @dev The maker owns its Aqua strategy and maintenance position and fronts grid-priced settlement cash for JIT mints.
+/// @dev The maker owns its Aqua strategy and Midnight position and fronts grid-priced settlement cash for JIT mints.
 /// Borrower fills mint only a taker's note shortfall using scoped note delegation and existing collateral.
 /// Both payment orders are supported; maker cash must cover mint float when its hook executes, plus any earlier
 /// swap payout. Maker-funded principal is refunded; only the native mint fee is spent. Hook balances are preserved.
@@ -43,7 +43,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
 
     // ===== Immutables =====
 
-    /// @notice Only this wallet configures or maintains the strategy; all unused mint float returns here.
+    /// @notice Only this wallet configures or deactivates the strategy; all unused mint float returns here.
     address public immutable maker;
     /// @notice Market-specific token whose backing remains in its own Midnight credit position.
     IMoongladeNote public immutable note;
@@ -161,49 +161,6 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
         active = false;
 
         emit StrategyDeactivated(strategyHash);
-    }
-
-    // ===== Maker maintenance =====
-
-    /// @notice Cancel eligible wallet inventory and adjust selected collateral to the configured utilization.
-    /// @dev Maker only. May pull temporary cash or additional collateral; unspent float is returned in this call.
-    /// Oracle failures or insufficient collateral for an explicit rebalance revert the complete operation.
-    /// @return Debt units cancelled by burning wallet inventory.
-    function rebalance() external nonReentrant returns (uint256) {
-        _checkMaker();
-        _checkConfigured();
-
-        uint256 units = _burnAvailable(type(uint256).max, 0, _currentSharePrice(), WAD);
-        _adjustCollateral(midnight.debt(marketId, maker));
-
-        return units;
-    }
-
-    /// @notice Repay an explicit amount of the maker's debt using wallet loan tokens.
-    /// @dev Maker only; grants and clears an exact Midnight allowance and returns surplus selected collateral.
-    /// @param _units Nonzero debt units, bounded by the maker's current debt.
-    function repayDebt(uint256 _units) external nonReentrant {
-        _checkMaker();
-        _checkConfigured();
-
-        _repay(_units);
-        _releaseCollateral();
-    }
-
-    /// @notice Disable quoting, cancel eligible wallet inventory, and repay the remaining maker debt.
-    /// @dev Maker only. Call before docking to price an optional burn from live reserves. Unavailable quotes skip
-    /// burning and use direct repayment; no par price is fabricated. Insufficient wallet funds revert atomically.
-    /// Collateral is released directly to the wallet; unrelated collateral types are left in the maker's position.
-    function windDown() external nonReentrant {
-        _checkMaker();
-        _checkConfigured();
-        active = false;
-        emit StrategyDeactivated(strategyHash);
-        _burnAvailable(type(uint256).max, 0, _currentSharePrice(), WAD);
-        uint256 debt = midnight.debt(marketId, maker);
-        if (debt != 0) _repay(debt);
-        _releaseCollateral();
-        emit WoundDown();
     }
 
     /// @notice Mint missing outgoing mgNOTE into the maker's wallet before Aqua pulls it.
@@ -338,7 +295,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
 
     // ===== Internal functions =====
 
-    /// @notice Restrict maintenance and configuration to the immutable wallet owner.
+    /// @notice Restrict configuration and deactivation to the immutable wallet owner.
     function _checkMaker() private view {
         if (msg.sender != maker) revert MoongladeDeskHook__Unauthorized();
     }
@@ -430,7 +387,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
     /// Funding and fee limits use the exact rounded buyer and seller cash legs at the selected tick.
     /// @param _limit Maximum wallet shares eligible for this burn; callbacks limit this to their purchased shares.
     /// @param _reserveAssets Loan tokens that must remain available for a pending output transfer.
-    /// @param _cash Fill cash for _fullShares, or a WAD marginal share price when _fullShares is WAD.
+    /// @param _cash Fill cash for _fullShares.
     /// @param _fullShares Full fill shares used to allocate the burned fraction's honest price.
     /// @return Debt units cancelled, or zero when cancellation is unavailable.
     function _burnAvailable(uint256 _limit, uint256 _reserveAssets, uint256 _cash, uint256 _fullShares)
@@ -480,7 +437,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
     }
 
     /// @notice Convert a fill share price into a native-unit price without first rounding proportional cash to zero.
-    /// @param _cash Cash paid for _fullShares, or a marginal WAD share price for a WAD denominator.
+    /// @param _cash Cash paid for _fullShares.
     /// @param _fullShares Full shares represented by the cash value.
     /// @param _shares Minted or burned shares whose native units are being priced.
     /// @param _units Gross credit units processed when minting or released when burning.
@@ -501,27 +458,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
         return midnight.settlementFee(marketId, timeLeft);
     }
 
-    /// @notice Read the current marginal share quote without requiring local activation.
-    /// @dev Docked or invalid reserve quotes skip optional burning instead of substituting a par price.
-    /// @return Marginal WAD share price, or zero when a live quote is unavailable.
-    function _currentSharePrice() private view returns (uint256) {
-        try aqua.safeBalances(maker, address(router), strategyHash, address(loanToken), address(note)) returns (
-            uint256 usdcBalance, uint256 noteBalance
-        ) {
-            try IMoongladeCurve(curveParameters.curve)
-                .marginalPrice(_pricingState(usdcBalance, noteBalance), curveParameters.data) returns (
-                uint256 price
-            ) {
-                return price;
-            } catch {
-                return 0;
-            }
-        } catch {
-            return 0;
-        }
-    }
-
-    /// @notice Build consistent inputs for the selected implementation's maintenance and rate views.
+    /// @notice Build consistent inputs for the selected implementation's rate view.
     /// @param _cashBalance Native virtual loan-token reserve.
     /// @param _noteBalance Native virtual share reserve.
     /// @return Market state with actual payout and time clamped at maturity.
@@ -537,17 +474,6 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
             block.timestamp < marketData.maturity ? marketData.maturity - block.timestamp : 0,
             note.totalSupply() == 0 ? WAD : note.payoutPerShare()
         );
-    }
-
-    /// @notice Repay an explicit maker-authorized debt amount from wallet cash.
-    /// @param _units Nonzero units not exceeding current market debt.
-    function _repay(uint256 _units) private {
-        if (_units == 0 || _units > midnight.debt(marketId, maker)) revert MoongladeDeskHook__InvalidRepayment();
-        uint256 beforeBalance = _pullLoanTokens(_units);
-        SafeERC20.forceApprove(loanToken, address(midnight), _units);
-        midnight.repay(marketData, _units, maker, address(0), "");
-        SafeERC20.forceApprove(loanToken, address(midnight), 0);
-        _refundLoanTokens(beforeBalance);
     }
 
     /// @notice Pull exact temporary loan-token funding from the maker.
@@ -596,7 +522,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
     }
 
     /// @notice Best-effort release of surplus selected collateral after a debt-reducing action.
-    /// @dev Oracle or withdrawal failures must not undo an otherwise successful optional burn or repayment.
+    /// @dev Oracle or withdrawal failures must not undo an otherwise successful optional burn.
     function _releaseCollateral() private {
         uint256 debt = midnight.debt(marketId, maker);
         try this.requiredCollateral(debt) returns (uint256 required) {

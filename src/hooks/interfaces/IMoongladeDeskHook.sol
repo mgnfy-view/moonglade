@@ -55,8 +55,6 @@ interface IMoongladeDeskHook is IMakerHooks, IBuyCallback {
     /// @param _supplied Whether collateral was supplied rather than released.
     /// @param _assets Collateral amount moved.
     event CollateralAdjusted(bool _supplied, uint256 _assets);
-    /// @notice The maker stopped the hook and repaid its remaining market debt.
-    event WoundDown();
 
     /// @notice The maker address is zero.
     error MoongladeDeskHook__InvalidMaker();
@@ -90,14 +88,9 @@ interface IMoongladeDeskHook is IMakerHooks, IBuyCallback {
     error MoongladeDeskHook__InvalidPrice();
     /// @notice A Midnight callback does not match the single active debt-cancellation context.
     error MoongladeDeskHook__InvalidCallback();
-    /// @notice A repayment amount is zero or exceeds the maker's outstanding debt.
-    error MoongladeDeskHook__InvalidRepayment();
 
     function configure(IMoongladeSwap.Config calldata _config, RiskConfig calldata _risk) external returns (bytes32);
     function deactivate() external;
-    function rebalance() external returns (uint256);
-    function repayDebt(uint256 _units) external;
-    function windDown() external;
 
     function maker() external view returns (address);
     function note() external view returns (IMoongladeNote);
