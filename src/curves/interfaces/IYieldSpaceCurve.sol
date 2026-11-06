@@ -28,6 +28,8 @@ interface IYieldSpaceCurve is IMoongladeCurve {
     error YieldSpaceCurve__InvalidExponent();
     /// @notice The trade would exhaust or exceed available reserves.
     error YieldSpaceCurve__InsufficientLiquidity();
+    /// @notice A nonlinear solver leg is too small relative to reserves and its inverse-exponent amplification.
+    error YieldSpaceCurve__InsufficientPrecision();
     /// @notice The trade would breach the configured minimum annual discount rate.
     error YieldSpaceCurve__RateFloor();
     /// @notice The required native cash exceeds share par or its current face value.

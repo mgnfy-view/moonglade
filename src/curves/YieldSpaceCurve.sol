@@ -19,6 +19,9 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     uint256 private constant WAD = 1e18;
     /// @notice Relative price margin of one part per billion.
     uint256 private constant MARGIN = 1e9;
+    /// @notice Nonlinear solver legs must exceed one ppm of the larger reserve, divided by the WAD exponent.
+    /// @dev Operating resolution policy with headroom for normalization; not a certified PRB-Math error bound.
+    uint256 private constant MIN_RESOLVED_FRACTION = 1e12;
     /// @notice Seconds in the annualization period.
     uint256 private constant YEAR = 365 days;
     /// @notice Maximum note precision supported by WAD normalization.
@@ -28,6 +31,7 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     /// @dev Apply the margin in WAD cash before native rounding. For fixed cash, adjust the solver's cash
     /// budget or target first, so its share result already includes the margin. Tick rounding belongs to the opcode.
     /// Fixed-cash quotes revert if the resulting share bound cannot satisfy the payout/par cap.
+    /// Nonlinear quotes reject either solver leg below the reserve- and exponent-scaled resolution threshold.
     /// @return shares Native share bound, or the exact specified shares.
     /// @return assets Native cash bound, or the exact specified cash.
     function quote(
@@ -133,14 +137,24 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
         returns (uint256)
     {
         if (_amount == 0) revert YieldSpaceCurve__ZeroAmount();
+        // Constant-sum trades exchange normalized cash and face value exactly, without reserve cancellation.
+        if (_a == WAD) {
+            if (_amount >= _y) revert YieldSpaceCurve__InsufficientLiquidity();
+            return _amount;
+        }
         if (!_exactIn && _amount >= _y) revert YieldSpaceCurve__InsufficientLiquidity();
+        // Small exponents amplify normalization error through the inverse power; bound both trade legs.
+        uint256 minimumResolved = Math.mulDiv(Math.max(_x, _y), MIN_RESOLVED_FRACTION, _a, Math.Rounding.Ceil);
+        if (_amount < minimumResolved) revert YieldSpaceCurve__InsufficientPrecision();
         uint256 invariant = WAD + _power(Math.mulDiv(_y, WAD, _x), _a);
         uint256 changed = _exactIn ? _x + _amount : _y - _amount;
         uint256 term = _power(Math.mulDiv(changed, WAD, _x), _a);
         uint256 remaining = Math.mulDiv(_power(invariant - term, WAD * WAD / _a), _x, WAD);
         if (_exactIn && remaining == 0) revert YieldSpaceCurve__InsufficientLiquidity();
 
-        return _exactIn ? _y - remaining : remaining - _x;
+        uint256 result = _exactIn ? _y - remaining : remaining - _x;
+        if (result < minimumResolved) revert YieldSpaceCurve__InsufficientPrecision();
+        return result;
     }
 
     /// @notice Evaluate a WAD power; PRB-Math v4.1 natively handles bases below WAD.
