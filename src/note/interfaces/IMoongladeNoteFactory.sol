@@ -14,7 +14,7 @@ interface IMoongladeNoteFactory {
     /// @param _wrapper Deployed note address.
     event MoongladeNoteCreated(bytes32 indexed _marketId, address indexed _wrapper);
 
-    /// @notice Midnight is the zero address or a market names another Midnight deployment.
+    /// @notice Midnight is the zero address.
     error MoongladeNoteFactory__InvalidMidnight();
     /// @notice The market targets a different chain.
     error MoongladeNoteFactory__InvalidChain();

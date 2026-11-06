@@ -45,9 +45,6 @@ contract MoongladeNoteFactory is IMoongladeNoteFactory {
     /// @param _market Ungated market for this Midnight deployment and chain.
     /// @return Existing or newly deployed note address.
     function create(Market memory _market) external returns (address) {
-        if (_market.midnight != address(midnight)) {
-            revert IMoongladeNoteFactory.MoongladeNoteFactory__InvalidMidnight();
-        }
         if (_market.chainId != block.chainid) revert IMoongladeNoteFactory.MoongladeNoteFactory__InvalidChain();
         if (_market.enterGate != address(0) || _market.liquidatorGate != address(0)) {
             revert IMoongladeNoteFactory.MoongladeNoteFactory__GatedMarket();
