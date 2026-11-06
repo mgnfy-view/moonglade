@@ -77,7 +77,6 @@ library MidnightTicks {
 
         uint256 lowerPrice = TickLib.tickToPrice(upper - _spacing);
         if (upperPrice - _price < _price - lowerPrice) return upper;
-
         return ceil(lowerPrice, _spacing);
     }
 
