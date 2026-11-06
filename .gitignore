@@ -1,0 +1,14 @@
+# Foundry outputs and Soldeer downloads (keep soldeer.lock).
+/out/
+/cache/
+/broadcast/
+/dependencies/
+
+# Local configuration and credentials.
+.env
+.env.*
+!.env.example
+
+# Editor and OS files.
+.DS_Store
+*.swp

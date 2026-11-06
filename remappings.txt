@@ -1,0 +1,10 @@
+@1inch/aqua/=dependencies/aqua-0.1.0/
+@1inch/solidity-utils/=dependencies/solidity-utils-6.9.7/
+@openzeppelin-contracts/=dependencies/@openzeppelin-contracts-5.4.0/
+@openzeppelin/contracts/=dependencies/@openzeppelin-contracts-5.4.0/
+aqua/=dependencies/aqua-0.1.0/
+forge-std/=dependencies/forge-std-1.16.2/src/
+midnight/=dependencies/midnight-0.0.0/
+prb-math/=dependencies/prb-math-4.1.0/
+solidity-utils/=dependencies/solidity-utils-6.9.7/
+swap-vm/=dependencies/swap-vm-1.0.2/
