@@ -77,7 +77,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @param _spender Delegate permitted to supply native-settlement cash float; must be nonzero.
     /// @param _units Total remaining gross units authorized; zero revokes the delegation.
     /// @param _deadline Latest timestamp at which nonzero delegated minting may execute.
-    function approveBorrow(address _spender, uint128 _units, uint40 _deadline) external {
+    function approveMint(address _spender, uint128 _units, uint40 _deadline) external {
         if (_spender == address(0)) revert MoongladeNote__InvalidBorrowSpender();
         if (_units != 0 && block.timestamp > _deadline) revert MoongladeNote__BorrowExpired();
 
@@ -101,7 +101,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @param _tick Valid aligned price tick per Midnight credit unit.
     /// @return Gross units processed after upward rounding; new debt may be smaller or zero.
     /// @return Shares actually issued, including any integer-rounding excess.
-    function mintForSharesOnBehalf(
+    function mintFromPosition(
         uint256 _shares,
         uint256 _maxUnits,
         uint256 _maxFront,
@@ -122,7 +122,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
             // previewMintUnits bounds units to uint128 before this checked allowance deduction.
             allowance.remainingUnits -= uint128(units);
         }
-        uint256 issuedShares = _mint(units, _maxFront, _borrower, _receiver, _tick);
+        uint256 issuedShares = _mintFromPosition(units, _maxFront, _borrower, _receiver, _tick);
         if (issuedShares < _shares) revert MoongladeNote__InsufficientIssuedShares();
 
         return (units, issuedShares);
@@ -142,7 +142,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @param _tick Valid aligned price tick per credit unit purchased to cancel debt; shares convert to gross units.
     /// @return Debt units cancelled.
     /// @return Actual loan-token settlement fee.
-    function burn(uint256 _shares, uint256 _maxCost, address _borrower, uint256 _tick)
+    function burnToRepay(uint256 _shares, uint256 _maxCost, address _borrower, uint256 _tick)
         external
         nonReentrant
         returns (uint256, uint256)
@@ -152,7 +152,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
             revert MoongladeNote__UnauthorizedBorrower(_borrower, msg.sender);
         }
 
-        (uint256 units, uint256 cost) = _burnCredit(_shares, _maxCost, _borrower, _tick);
+        (uint256 units, uint256 cost) = _burnToRepay(_shares, _maxCost, _borrower, _tick);
 
         return (units, cost);
     }
@@ -231,7 +231,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     }
 
     /// @dev Burn caller shares and settle a reduce-only buy offer at the selected credit-unit tick.
-    function _burnCredit(uint256 _shares, uint256 _maxCost, address _borrower, uint256 _tick)
+    function _burnToRepay(uint256 _shares, uint256 _maxCost, address _borrower, uint256 _tick)
         private
         returns (uint256, uint256)
     {
@@ -266,7 +266,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @dev Settle a wallet-made sell offer at the chosen credit-unit tick, then issue net-credit-backed shares.
     /// Minting follows settlement to measure actual net credit. The transient hash limits ratification, and callers
     /// guard reentrancy across external token and Midnight calls.
-    function _mint(uint256 _units, uint256 _maxFront, address _borrower, address _receiver, uint256 _tick)
+    function _mintFromPosition(uint256 _units, uint256 _maxFront, address _borrower, address _receiver, uint256 _tick)
         private
         returns (uint256)
     {

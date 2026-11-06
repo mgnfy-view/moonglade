@@ -375,7 +375,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
         uint256 beforeBalance = _pullLoanTokens(_front);
         SafeERC20.forceApprove(loanToken, address(note), _front);
         (uint256 processed, uint256 issued) =
-            note.mintForSharesOnBehalf(_shares, _units, _front, _borrower, _borrower, _tick);
+            note.mintFromPosition(_shares, _units, _front, _borrower, _borrower, _tick);
         SafeERC20.forceApprove(loanToken, address(note), 0);
         _refundLoanTokens(beforeBalance);
         if (note.balanceOf(address(this)) != beforeShares) revert MoongladeDeskHook__InvalidTransfer();
@@ -426,7 +426,7 @@ contract MoongladeDeskHook is IMoongladeDeskHook, ReentrancyGuardTransient {
         SafeERC20.forceApprove(loanToken, address(midnight), buyerAssets);
         burnUnits = units;
         burnAssets = buyerAssets;
-        (uint256 repaid, uint256 actualCost) = note.burn(shares, riskLimits.maxBurnCost, maker, tick);
+        (uint256 repaid, uint256 actualCost) = note.burnToRepay(shares, riskLimits.maxBurnCost, maker, tick);
         if (burnUnits != 0 || note.balanceOf(address(this)) != beforeShares) {
             revert MoongladeDeskHook__InvalidCallback();
         }

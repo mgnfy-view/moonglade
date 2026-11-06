@@ -105,11 +105,11 @@ interface IMoongladeNote is IERC20Metadata {
 
     // ==================== Configuration ====================
 
-    function approveBorrow(address _spender, uint128 _units, uint40 _deadline) external;
+    function approveMint(address _spender, uint128 _units, uint40 _deadline) external;
 
     // ==================== User actions ====================
 
-    function mintForSharesOnBehalf(
+    function mintFromPosition(
         uint256 _shares,
         uint256 _maxUnits,
         uint256 _maxFront,
@@ -117,7 +117,7 @@ interface IMoongladeNote is IERC20Metadata {
         address _receiver,
         uint256 _tick
     ) external returns (uint256, uint256);
-    function burn(uint256 _shares, uint256 _maxCost, address _borrower, uint256 _tick)
+    function burnToRepay(uint256 _shares, uint256 _maxCost, address _borrower, uint256 _tick)
         external
         returns (uint256, uint256);
     function wrapFromOffer(Offer calldata _offer, bytes calldata _ratifierData, uint256 _units, address _receiver)
