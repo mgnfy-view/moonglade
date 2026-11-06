@@ -21,10 +21,6 @@ library MidnightTicks {
     /// @param _tick Unsupported tick.
     /// @param _spacing Required grid spacing.
     error MidnightTicks__InvalidTick(uint256 _tick, uint256 _spacing);
-    /// @notice No grid tick satisfies the requested directional price bound.
-    /// @param _price Requested WAD price.
-    /// @param _spacing Selected grid spacing.
-    error MidnightTicks__UnavailablePrice(uint256 _price, uint256 _spacing);
 
     // ===== Internal functions =====
 
@@ -40,14 +36,13 @@ library MidnightTicks {
 
     /// @notice Select the smallest valid tick whose rounded native price is at least the requested price.
     /// @param _price Requested WAD price, at most par.
-    /// @param _spacing Market tick spacing.
-    /// @return Ceiling tick; reverts when the grid has no sufficiently high price.
+    /// @param _spacing Spacing from an initialized Midnight market: 1, 2, or 4.
+    /// @return Smallest grid tick whose price is at least the requested price.
     function ceil(uint256 _price, uint256 _spacing) internal pure returns (uint256) {
-        uint256 last = _lastIndex(_price, _spacing) * _spacing;
-        uint256 tick = TickLib.priceToTick(_price, _spacing);
-        if (tick > last) revert MidnightTicks__UnavailablePrice(_price, _spacing);
+        _checkSpacing(_spacing);
+        if (_price > WAD) revert MidnightTicks__InvalidPrice(_price);
 
-        return tick;
+        return TickLib.priceToTick(_price, _spacing);
     }
 
     /// @notice Select the largest valid tick whose rounded native price is no greater than the requested price.
