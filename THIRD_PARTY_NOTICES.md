@@ -14,9 +14,13 @@ under [LicenseRef-Degensoft-SwapVM-1.1](LICENSES/LicenseRef-Degensoft-SwapVM-1.1
 This is a source-available license with copyleft and commercial-use conditions.
 It permits noncommercial hackathon use subject to its terms.
 
-The upstream source is installed unmodified by Soldeer. This scaffold contains
-no Moonglade integration code. Future integrations and distributed artifacts
-must preserve the applicable upstream license and notice requirements.
+The upstream source is installed unmodified by Soldeer. Moonglade's
+`src/instructions/MoongladeSwap.sol`,
+`src/opcodes/MoongladeOpcodes.sol`, `src/routers/MoongladeRouter.sol`,
+`src/routers/interfaces/IMoongladeRouter.sol`, `src/hooks/MoongladeDeskHook.sol`,
+and `src/hooks/interfaces/IMoongladeDeskHook.sol` carry
+`MIT AND LicenseRef-Degensoft-SwapVM-1.1` identifiers. Preserve the applicable
+upstream license and notice requirements when distributing these components.
 
 ## Aqua
 
@@ -28,6 +32,11 @@ This is a source-available license with copyleft and commercial-use conditions.
 Aqua is installed unmodified by Soldeer; its source and artifacts retain that
 license.
 
+Moonglade uses Aqua interfaces and its deployed registry for shared-liquidity
+strategies. The router and desk-hook integrations listed above use SwapVM's
+Aqua settlement path; their original contributions do not replace the licenses
+of the upstream code they incorporate.
+
 ## Morpho Midnight
 
 Midnight revision `7565b9adb3335c1284a3c2525523cda7c07b9fa7` is installed under
@@ -38,6 +47,18 @@ Association. Consult the pinned upstream
 and [LICENSE-MIT](https://github.com/morpho-org/midnight/blob/7565b9adb3335c1284a3c2525523cda7c07b9fa7/LICENSE-MIT)
 for the full terms, including the additional-use-grant and change-license
 parameters. The root MIT license does not relicense Midnight's core.
+
+## Fork demos
+
+The scripts in `demo/` use forge-std for local deployment, fork setup, and
+console output. They call official Aqua and Midnight deployments on a Base
+fork without replacing either protocol's bytecode. Moonglade contracts and
+the demo oracle deploy locally; market configuration and opening balances
+are fork-only fixtures.
+
+Moonglade's demo sources carry MIT identifiers for their original code.
+Imported dependency source and compiled artifacts remain subject to the
+applicable upstream licenses described here.
 
 ## Other dependencies
 
