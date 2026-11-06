@@ -8,7 +8,7 @@ Moonglade is a **1inch Aqua app that makes markets in fixed-rate loans**. Makers
 
 **ETHGlobal Mumbai 2026 · 1inch: Build an Aqua App** · Base fork · Solidity / Foundry
 
-[How it works](#how-it-works) · [Run the demo](#run-the-demo) · [Verified output](demo/output.txt) · [Whitepaper](docs/Moonglade-Whitepaper.pdf)
+[How it works](#how-it-works) · [Run the demo](#run-the-demo) · [Verified output](demo/output.txt) · [Safety](#safety-properties) · [Whitepaper](docs/Moonglade-Whitepaper.pdf)
 
 ---
 
@@ -48,6 +48,14 @@ Each desk combines USDC/mgNOTE virtual budgets on Aqua with the maker's collater
 | **Redeem** | Redeem mgNOTE after maturity | Burns shares for their share of repaid Midnight credit |
 
 Borrowers first supply collateral and approve an expiring borrow budget. Lenders can never borrow by accident: without that budget, selling notes you don't hold simply reverts.
+
+### How a desk earns
+
+The maker is a **temporary counterparty in both directions**: it sells mgNOTE to lenders and buys mgNOTE from borrowers and exiting lenders. Every trade pays the maker's fee and the tick spread.
+
+The curve keeps that position small. When lenders buy, the desk's quoted rate falls, making borrowing more attractive; when borrowers sell, the rate rises, making lending more attractive. Each imbalance prices in the trade that offsets it, and arbitrage against Midnight's order book adds the same pressure.
+
+When flow balances like this, the interest the desk pays on loans it originated is matched by the interest it earns on notes it holds, so **net carry tends towards zero and the desk keeps the fees**. With one-sided flow, the desk carries the imbalance (earning or paying the fixed rate on it) until the curve draws the other side in.
 
 ### What we built on Aqua and SwapVM
 
@@ -91,12 +99,20 @@ The demo forks **Base block 52,000,000** and calls the **deployed Aqua and Morph
 | --- | --- |
 | `maker` | A desk registers; its 1,000,000 USDC stays in the maker's wallet |
 | `lend` | 10,000 USDC buys **10,364.540585 mgNOTE**, minted on demand |
-| `sell` | After seven days, the lender exits for **9,947.416539 USDC**; maker debt is cancelled and collateral released |
+| `sell` | After seven days, the lender exits for **9,947.416539 USDC** (net of the demo maker's 0.30% fee on both legs and the tick spread); maker debt is cancelled and collateral released |
 | `borrow` | A borrower holding zero notes receives **9,573.770000 USDC** against their own collateral |
 | `maturity` | The maker repays its debt; the lender redeems **10,364.540585 USDC** |
 | `shared` | Two strategies fill against **one maker wallet**, with no duplicate deposits |
 
 **Fixtures, stated plainly:** opening balances, a fixed $2,000/WETH oracle, a custom Midnight market configuration, and time travel are fork fixtures. Moonglade's contracts deploy locally (the custom opcode needs its own router). Each scene starts fresh; nothing is broadcast.
+
+## Risks and limitations
+
+- **Desk collateral needs a keeper.** A desk posts collateral just in time for the debt it takes on, at the maker's target utilisation (80% in the demo). Collateral is not topped up automatically when prices fall; makers should run a keeper that calls `rebalance`, or choose a lower target.
+- **One-sided flow exposes the desk.** Net carry is close to zero only when lending and borrowing roughly balance; a persistent imbalance leaves the desk earning or paying the fixed rate on it, and exposed to rate moves, until the curve attracts offsetting trades.
+- **Redemption depends on repayment.** After maturity, mgNOTE redeems from repaid Midnight credit; if borrowers repay late, holders may need to wait or redeem in part.
+- **Pricing curves are maker-chosen.** The opcode enforces par, payout, liquidity and tick bounds for any curve, but a poorly chosen curve can still lose the maker money.
+- **Hackathon code, unaudited.** Do not use with real funds.
 
 ## Contract map
 
@@ -116,7 +132,7 @@ The demo forks **Base block 52,000,000** and calls the **deployed Aqua and Morph
 | **A custom Aqua app with a sophisticated DeFi position** | A desk managing shared cash, tokenised credit, collateral, and debt across its full lifecycle (`lend`, `sell`, `borrow`, `maturity`) |
 | **SwapVM use** | Custom instruction `0xd0` on a router extending SwapVM v1.0.2, plus three settlement hooks; see [router](src/routers/MoongladeRouter.sol) and [opcode table](src/opcodes/MoongladeOpcodes.sol) |
 | **Onchain token transfers in the demo** | Every scene moves USDC, WETH, or mgNOTE on a Base fork; see [recorded output](demo/output.txt) |
-| **Proper commit history** | Built incrementally during the event; see the commit log |
+| **Proper commit history** | The commit log shows the work done during the event; see [Disclosure](#disclosure) for what existed beforehand |
 
 ## Prior art and positioning
 
