@@ -12,7 +12,8 @@ contract MaturityDemo is DemoBase {
     /// @dev Verifies share removal, collateral return, debt cancellation, and Aqua strategy deactivation.
     function run() external {
         _setup();
-        uint256 shares = _swap(lender, true, 10_000 * UNIT);
+        uint256 openingCash = 10_000 * UNIT;
+        (uint256 shares, SwapFees memory openingFees) = _swap(hook, lender, true, openingCash);
         vm.warp(market.maturity);
         uint256 debt = midnight.debt(marketId, maker);
         uint256 collateral = midnight.collateral(marketId, maker, 0);
@@ -30,13 +31,14 @@ contract MaturityDemo is DemoBase {
         _require(
             midnight.debt(marketId, maker) == 0 && midnight.collateral(marketId, maker, 0) == 0, "Maker not settled"
         );
-        _require(!hook.active() && !hook.isRegistered() && redeemed > 10_000 * UNIT, "Maturity flow incomplete");
+        _require(!hook.active() && !hook.isRegistered() && redeemed > openingCash, "Maturity flow incomplete");
         _heading("05 / Maturity and redemption");
         _value("Clock advanced", "180 days to maturity (fork-only time travel)");
-        _value("Original lender payment", _amount(10_000 * UNIT, 6, "USDC"));
+        _value("Original lender payment", _amount(openingCash, 6, "USDC"));
+        _showSwapFees("Opening swap fee", openingFees);
         _value("Shares redeemed", _amount(shares, 6, "mgNOTE"));
         _value("Lender receives", _amount(redeemed, 6, "USDC"));
-        _value("Lender gain", _amount(redeemed - 10_000 * UNIT, 6, "USDC"));
+        _value("Lender gain", _amount(redeemed - openingCash, 6, "USDC"));
         _value("Maker repayment", _amount(debt, 6, "USDC"));
         _value("Collateral returned", _amount(collateral, 18, "WETH"));
         _check("Actual repayment funded the lender's USDC redemption");

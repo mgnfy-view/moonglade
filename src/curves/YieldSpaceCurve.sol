@@ -12,7 +12,7 @@ import { YieldSpaceCurveConfig } from "src/curves/YieldSpaceCurveConfig.sol";
 
 /// @title Sample YieldSpace pricing curve.
 /// @author Sahil Gujrati (@mgnfy-view).
-/// @notice Price net credit shares with x^a+y^a and a fixed maker-favored margin.
+/// @notice Price net credit shares with x^a+y^a, a maker-selected bid/ask fee, and a numerical margin.
 /// @dev Original formulas using PRB-Math; the margin is empirical, not certified numerical bounds.
 contract YieldSpaceCurve is IYieldSpaceCurve {
     /// @notice Fixed-point scale for prices, powers, rates and payout.
@@ -109,9 +109,11 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
 
     // ===== External views =====
 
-    /// @notice Quote a native cash or share quantity using packed sensitivity and rate-floor settings.
-    /// @dev Apply the margin in WAD cash before native rounding. For fixed cash, adjust the solver's cash
-    /// budget or target first, so its share result already includes the margin. Tick rounding belongs to the opcode.
+    /// @notice Quote a native cash or share quantity using the maker's sensitivity, rate floor, and fee.
+    /// @dev Apply the bid/ask fee plus numerical margin in WAD cash before native rounding. For fixed cash,
+    /// adjust the solver's cash budget or target first, so its share result already includes the spread.
+    /// Full ask fees must fit below payout/par; only the numerical margin may be clipped. Fees remain with
+    /// the maker through ordinary settlement. Tick rounding belongs to the opcode and may widen the spread.
     /// Fixed-cash quotes revert if the resulting share bound cannot satisfy the payout/par cap.
     /// Nonlinear quotes reject either solver leg below the reserve- and exponent-scaled resolution threshold.
     /// Desk buys return maximum cash for fixed shares or minimum shares for fixed cash; desk sells reverse these bounds.
@@ -119,7 +121,7 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     /// @param _amount Exact native cash or share quantity specified by the taker.
     /// @param _sharesSpecified Whether the specified quantity is note shares rather than cash.
     /// @param _deskBuying Whether the maker receives shares and pays cash.
-    /// @param _data Packed sensitivity and annual rate floor.
+    /// @param _data Packed sensitivity, annual rate floor, and maker-selected fee in basis points.
     /// @return Native share bound, or the exact specified shares.
     /// @return Native cash bound, or the exact specified cash.
     function quote(
@@ -136,7 +138,9 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
         // Shares are input when the desk buys and output when it sells.
         bool exactIn = _sharesSpecified == _deskBuying;
         Math.Rounding rounding = _deskBuying ? Math.Rounding.Floor : Math.Rounding.Ceil;
-        uint256 factor = _deskBuying ? WAD - MARGIN : WAD + MARGIN;
+        uint256 fee = Math.mulDiv(parameters.feeBps, WAD, YieldSpaceCurveConfig.BPS);
+        uint256 feeFactor = _deskBuying ? WAD - fee : WAD + fee;
+        uint256 factor = _deskBuying ? feeFactor - MARGIN : feeFactor + MARGIN;
         uint256 amountWad = _sharesSpecified
             ? Math.mulDiv(_amount, _market.payout, WAD / scale, rounding)
             : Math.mulDiv(_amount * scale, WAD, factor, _deskBuying ? Math.Rounding.Ceil : Math.Rounding.Floor);
@@ -147,7 +151,9 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
         if (_sharesSpecified) {
             shares = _amount;
             uint256 maxAssets = Math.mulDiv(shares, cap, WAD);
-            if (Math.mulDiv(result, 1, scale, rounding) > maxAssets) revert YieldSpaceCurve__PriceAbovePar();
+            // A full fee is part of the ask; clipping it would silently undercharge the configured spread.
+            uint256 capCheckAssets = Math.mulDiv(result, _deskBuying ? WAD : feeFactor, WAD * scale, rounding);
+            if (capCheckAssets > maxAssets) revert YieldSpaceCurve__PriceAbovePar();
             assets = Math.min(Math.mulDiv(Math.mulDiv(result, factor, WAD, rounding), 1, scale, rounding), maxAssets);
         } else {
             shares = Math.mulDiv(
@@ -167,7 +173,7 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     /// @param _shares Final native shares transferred after tick snapping.
     /// @param _assets Final native cash transferred after tick snapping.
     /// @param _deskBuying Whether the maker receives shares and pays cash.
-    /// @param _data Packed sensitivity and annual rate floor.
+    /// @param _data Packed sensitivity, annual rate floor, and maker-selected fee.
     function validateTrade(
         MarketState calldata _market,
         uint256 _shares,
@@ -185,9 +191,9 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     }
 
     /// @notice Return the current WAD marginal price from live reserves and packed sensitivity.
-    /// @dev At maturity the price equals payout; this view has no spread margin.
+    /// @dev At maturity the price equals payout; this view excludes trading fees and the numerical margin.
     /// @param _market Trusted note and native virtual reserves, remaining time, and WAD payout.
-    /// @param _data Packed sensitivity and annual rate floor.
+    /// @param _data Packed sensitivity, annual rate floor, and maker-selected fee.
     /// @return WAD loan tokens per share.
     function marginalPrice(MarketState calldata _market, bytes calldata _data) external view returns (uint256) {
         Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);
@@ -200,7 +206,7 @@ contract YieldSpaceCurve is IYieldSpaceCurve {
     /// @notice Read the reserve-implied continuous annual rate using packed sensitivity.
     /// @dev Reads trusted note precision and reserve ratios without changing state or enforcing the rate floor.
     /// @param _market Trusted note and native virtual reserves, remaining time, and WAD payout.
-    /// @param _data Packed sensitivity and annual rate floor.
+    /// @param _data Packed sensitivity, annual rate floor, and maker-selected fee.
     /// @return WAD annual rate; the rate-floor setting is enforced only by validateTrade.
     function rate(MarketState calldata _market, bytes calldata _data) external view returns (uint256) {
         Parameters memory parameters = YieldSpaceCurveConfig.decode(_data);

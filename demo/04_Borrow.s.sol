@@ -16,7 +16,7 @@ contract BorrowDemo is DemoBase {
         uint256 shares = 10_000 * UNIT;
         uint256 authorizedUnits = _prepareBorrower(shares);
         _require(note.balanceOf(borrower) == 0 && USDC.balanceOf(borrower) == 0, "Borrower did not start empty");
-        uint256 received = _swap(borrower, false, shares);
+        (uint256 received, SwapFees memory fees) = _swap(hook, borrower, false, shares);
         (uint128 remaining,) = note.borrowAllowances(borrower, address(hook));
         uint256 debt = midnight.debt(marketId, borrower);
         _require(debt == authorizedUnits && remaining == 0, "Scoped consent was not consumed exactly");
@@ -27,6 +27,7 @@ contract BorrowDemo is DemoBase {
         _value("Collateral supplied", _amount(100 ether, 18, "WETH"));
         _value("Scoped mint budget", _amount(authorizedUnits, 6, "units"));
         _value("Borrower receives", _amount(received, 6, "USDC"));
+        _showSwapFees("Maker trading fee", fees);
         _value("Borrower debt", _amount(debt, 6, "units"));
         _value("Unused mint consent", _amount(remaining, 6, "units"));
         _value("Maker note inventory", _amount(note.balanceOf(maker), 6, "mgNOTE"));

@@ -17,7 +17,7 @@ contract LendDemo is DemoBase {
         uint256 beforeRate = hook.currentRate();
         uint256 beforeLenderCash = USDC.balanceOf(lender);
         uint256 cash = 10_000 * UNIT;
-        uint256 received = _swap(lender, true, cash);
+        (uint256 received, SwapFees memory fees) = _swap(hook, lender, true, cash);
         uint256 debt = midnight.debt(marketId, maker);
         uint256 collateral = midnight.collateral(marketId, maker, 0);
         _require(beforeLenderCash - USDC.balanceOf(lender) == cash, "Incorrect lender payment");
@@ -26,6 +26,7 @@ contract LendDemo is DemoBase {
         _heading("02 / Lend: USDC -> mgNOTE");
         _value("Lender pays", _amount(cash, 6, "USDC"));
         _value("Lender receives", _amount(received, 6, "mgNOTE"));
+        _showSwapFees("Maker trading fee", fees);
         _value("Net face value", _amount(Math.mulDiv(received, note.payoutPerShare(), WAD), 6, "USDC"));
         _value("Maker debt created", _amount(debt, 6, "units"));
         _value("Maker collateral posted", _amount(collateral, 18, "WETH"));

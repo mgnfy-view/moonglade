@@ -11,10 +11,15 @@ import { Script } from "forge-std/Script.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 import { TakerTraitsLib } from "swap-vm/src/libs/TakerTraits.sol";
 
+import { IYieldSpaceCurve } from "src/curves/interfaces/IYieldSpaceCurve.sol";
+import { IMoongladeCurve } from "src/curves/interfaces/IMoongladeCurve.sol";
 import { IMoongladeNote } from "src/note/interfaces/IMoongladeNote.sol";
 import { IMoongladeNoteFactory } from "src/note/interfaces/IMoongladeNoteFactory.sol";
 import { IMoongladeDeskHook } from "src/hooks/interfaces/IMoongladeDeskHook.sol";
 import { IMoongladeSwap } from "src/instructions/interfaces/IMoongladeSwap.sol";
+
+import { YieldSpaceCurveConfig } from "src/curves/YieldSpaceCurveConfig.sol";
+import { DemoCurveConfig } from "demo/shared/DemoCurveConfig.sol";
 import { DemoOracle } from "demo/shared/DemoOracle.sol";
 import { DemoOutput } from "demo/shared/DemoOutput.sol";
 
@@ -29,6 +34,18 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
     struct Config {
         /// @notice Base block selected by the runner and required by the scene.
         uint256 forkBlock;
+        /// @notice Maker-selected pricing spread on both bid and ask, in basis points; zero disables it.
+        uint16 feeBps;
+    }
+
+    /// @notice USDC pricing components retained by the maker for the actual volume of one swap.
+    struct SwapFees {
+        /// @notice Fee rate read from the selected desk's committed curve configuration.
+        uint16 feeBps;
+        /// @notice Difference between fee-bearing and zero-fee curve quotes for the same executed shares.
+        uint256 curveFee;
+        /// @notice Additional maker-favored price improvement from tick and native amount rounding.
+        uint256 roundingSpread;
     }
 
     // ===== Constants =====
@@ -72,8 +89,8 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
     Market internal market;
     /// @notice Canonical Midnight identifier of the custom market.
     bytes32 internal marketId;
-    /// @notice Order currently selected by the scene for quoting and execution.
-    ISwapVM.Order internal strategy;
+    /// @notice Local calldata adapter used to read the maker's committed curve settings.
+    DemoCurveConfig private curveConfigDecoder;
 
     /// @notice A scene's required token, position, or configuration invariant failed.
     /// @param _reason Description of the failed scene check.
@@ -86,6 +103,7 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
     /// Scene execution remains independent; no state or deployed contracts carry over from this call.
     function showConfig() external {
         _setup();
+        Config memory config = _loadConfig();
         _heading("Common configuration");
         _value("Network", string.concat("Base fork / chain ", vm.toString(block.chainid)));
         _value("Fork block", vm.toString(block.number));
@@ -96,6 +114,8 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
         _value("Market configuration", "Fork-only governance impersonation");
         _value("Opening balances", "Fork fixtures; no live funds used");
         _value("Collateral oracle", "Fixed $2,000/WETH demo fixture");
+        _value("Maker pricing fee", _rate(uint256(config.feeBps) * WAD / YieldSpaceCurveConfig.BPS));
+        _value("Fee accounting", "Embedded in USDC price; rounding spread separate");
     }
 
     // ===== Internal setup =====
@@ -137,11 +157,11 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
         deal(address(USDC), lender, 100_000 * UNIT);
         _wrapEth(maker, 1_000 ether);
         _register(hook);
-        strategy = hook.order();
         vm.startPrank(lender);
         USDC.approve(address(router), type(uint256).max);
         note.approve(address(router), type(uint256).max);
         vm.stopPrank();
+        curveConfigDecoder = new DemoCurveConfig();
     }
 
     /// @notice Enable the custom collateral policy through the actual configurator on the fork.
@@ -182,6 +202,13 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
     /// @dev Uses fork impersonation; the maker retains its tokens until the hook or Aqua settles a fill.
     /// @param _desk Hook receiving operator permissions and token allowances.
     function _register(IMoongladeDeskHook _desk) internal {
+        uint64 sensitivity = 0.1e18;
+        uint64 rateFloor = 0.005e18;
+        uint16 feeBps = _loadConfig().feeBps;
+        IYieldSpaceCurve.Parameters memory parameters =
+            IYieldSpaceCurve.Parameters({ sensitivity: sensitivity, rateFloor: rateFloor, feeBps: feeBps });
+        bytes memory pricingData = YieldSpaceCurveConfig.encode(parameters);
+
         vm.startPrank(maker);
         midnight.setIsAuthorized(address(_desk), true, maker);
         midnight.setIsAuthorized(note.ratifier(), true, maker);
@@ -191,7 +218,7 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
         note.approve(address(_desk), type(uint256).max);
         WETH.approve(address(_desk), type(uint256).max);
         _desk.configure(
-            IMoongladeSwap.Config(address(note), curve, abi.encodePacked(uint64(0.1e18), uint64(0.005e18))),
+            IMoongladeSwap.Config(address(note), curve, pricingData),
             IMoongladeDeskHook.RiskConfig(BUDGET, BUDGET, 100 * UNIT, 0, 0.8e18, 1_000 ether, true)
         );
         uint256[] memory budgets = new uint256[](2);
@@ -246,23 +273,86 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
 
     /// @notice Quote and execute a real fork-token swap, verifying output and temporary cash balances.
     /// @dev Borrowing may mint the taker's note input in the pre-transfer hook; output must still match its quote.
+    /// Fee accounting snapshots the selected desk's pre-trade reserves, payout, time, and curve settings.
+    /// @param _desk Registered desk whose order and pricing configuration apply to this fill.
     /// @param _actor Taker impersonated for quote and swap execution.
     /// @param _lend Whether the swap spends USDC to receive notes, rather than notes to receive USDC.
     /// @param _amount Exact native input amount.
     /// @return Actual native output transferred into the taker's wallet.
-    function _swap(address _actor, bool _lend, uint256 _amount) internal returns (uint256) {
+    /// @return Embedded curve fee and additional tick spread, both denominated in USDC.
+    function _swap(IMoongladeDeskHook _desk, address _actor, bool _lend, uint256 _amount)
+        internal
+        returns (uint256, SwapFees memory)
+    {
+        bytes memory takerData = _traits(_actor, 0);
+        ISwapVM.Order memory order = _desk.order();
         address tokenIn = _lend ? address(USDC) : address(note);
         address tokenOut = _lend ? address(note) : address(USDC);
         uint256 beforeOutput = IERC20(tokenOut).balanceOf(_actor);
         vm.prank(_actor);
-        (, uint256 quotedOut,) = router.quote(strategy, tokenIn, tokenOut, _amount, _traits(_actor, 0));
+        (, uint256 quotedOut,) = router.quote(order, tokenIn, tokenOut, _amount, takerData);
+        takerData = _traits(_actor, quotedOut);
+        SwapFees memory fees = _swapFees(_desk, _lend, _amount, quotedOut);
         vm.prank(_actor);
-        (, uint256 actualOut,) = router.swap(strategy, tokenIn, tokenOut, _amount, _traits(_actor, quotedOut));
+        (, uint256 actualOut,) = router.swap(order, tokenIn, tokenOut, _amount, takerData);
         _require(actualOut == quotedOut, "Quote differs from swap");
         _require(IERC20(tokenOut).balanceOf(_actor) == beforeOutput + actualOut, "Output transfer differs from quote");
-        _require(USDC.balanceOf(address(hook)) == 0 && USDC.balanceOf(address(note)) == 0, "Temporary cash retained");
+        _require(USDC.balanceOf(address(_desk)) == 0 && USDC.balanceOf(address(note)) == 0, "Temporary cash retained");
 
-        return actualOut;
+        return (actualOut, fees);
+    }
+
+    /// @notice Isolate the embedded USDC curve fee from the extra improvement due to execution rounding.
+    /// @dev Compare quotes for the actual executed share volume at identical pre-trade state. Both quotes retain
+    /// the numerical margin; only the fee rate changes. These components are included in the swap price and
+    /// represent gross price improvement, excluding Midnight settlement costs and other maker expenses.
+    /// The residual includes tick snapping, native amount rounding, and inverse-versus-forward quote rounding.
+    /// @param _desk Desk whose committed pricing settings and Aqua allocations are used.
+    /// @param _lend Whether USDC is the input rather than the output.
+    /// @param _amountIn Exact swap input.
+    /// @param _amountOut Quoted output, checked against execution by the caller.
+    /// @return Fee rate, embedded curve-fee value, and extra tick spread.
+    function _swapFees(IMoongladeDeskHook _desk, bool _lend, uint256 _amountIn, uint256 _amountOut)
+        private
+        view
+        returns (SwapFees memory)
+    {
+        IMoongladeSwap.Config memory pricing = _desk.curveConfig();
+        IYieldSpaceCurve.Parameters memory parameters = curveConfigDecoder.decode(pricing.data);
+        (uint256 cashReserve, uint256 noteReserve) =
+            AQUA.safeBalances(maker, address(router), _desk.strategyHash(), address(USDC), address(note));
+        IMoongladeCurve.MarketState memory beforeMarket = IMoongladeCurve.MarketState({
+            note: address(note),
+            cashBalance: cashReserve,
+            noteBalance: noteReserve,
+            timeLeft: market.maturity - block.timestamp,
+            payout: note.totalSupply() == 0 ? WAD : note.payoutPerShare()
+        });
+        uint256 shares = _lend ? _amountOut : _amountIn;
+        uint256 cash = _lend ? _amountIn : _amountOut;
+        (, uint256 feeQuote) = IMoongladeCurve(pricing.curve).quote(beforeMarket, shares, true, !_lend, pricing.data);
+        SwapFees memory fees;
+        fees.feeBps = parameters.feeBps;
+        parameters.feeBps = 0;
+        (, uint256 zeroFeeQuote) = IMoongladeCurve(pricing.curve)
+            .quote(beforeMarket, shares, true, !_lend, YieldSpaceCurveConfig.encode(parameters));
+        _require(
+            _lend ? cash >= feeQuote && feeQuote >= zeroFeeQuote : zeroFeeQuote >= feeQuote && feeQuote >= cash,
+            "Fee decomposition inconsistent"
+        );
+        fees.curveFee = _lend ? feeQuote - zeroFeeQuote : zeroFeeQuote - feeQuote;
+        fees.roundingSpread = _lend ? cash - feeQuote : feeQuote - cash;
+
+        return fees;
+    }
+
+    /// @notice Print the selected fee rate, its embedded USDC value, and the extra tick spread for one swap.
+    /// @param _label Scene-specific description of the fill's maker fee.
+    /// @param _fees Pricing components captured before the swap.
+    function _showSwapFees(string memory _label, SwapFees memory _fees) internal pure {
+        uint256 feeRate = uint256(_fees.feeBps) * WAD / YieldSpaceCurveConfig.BPS;
+        _value(_label, string.concat(_amount(_fees.curveFee, 6, "USDC"), " (", _rate(feeRate), ", embedded)"));
+        _value("Tick / rounding spread", _amount(_fees.roundingSpread, 6, "USDC"));
     }
 
     /// @notice Revert the scene if an expected invariant does not hold.
@@ -275,9 +365,13 @@ abstract contract DemoBase is Script, StdCheats, DemoOutput {
     // ===== Internal views =====
 
     /// @notice Load public fork settings from the environment documented in .env.example.
-    /// @return Fork configuration with the same default block as the demo runner.
+    /// @return Fork block and maker-selected fee, using the runner's default block when unspecified.
     function _loadConfig() internal view returns (Config memory) {
-        Config memory config = Config(vm.envOr("DEMO_FORK_BLOCK", uint256(52_000_000)));
+        uint256 defaultFeeBps = 30;
+        uint256 loadedFee = vm.envOr("DEMO_TRADE_FEE_BPS", defaultFeeBps);
+        _require(loadedFee < YieldSpaceCurveConfig.BPS, "Maker pricing fee must be below 10000 bps");
+        Config memory config =
+            Config({ forkBlock: vm.envOr("DEMO_FORK_BLOCK", uint256(52_000_000)), feeBps: uint16(loadedFee) });
 
         return config;
     }

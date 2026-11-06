@@ -25,12 +25,13 @@ contract SellNotesDemo is DemoBase {
     function run() external {
         _setup();
         ExitSnapshot memory before;
-        before.shares = _swap(lender, true, 10_000 * UNIT);
+        uint256 openingCash = 10_000 * UNIT;
+        (before.shares,) = _swap(hook, lender, true, openingCash);
         vm.warp(block.timestamp + 7 days);
         before.rate = hook.currentRate();
         before.debt = midnight.debt(marketId, maker);
         before.collateral = midnight.collateral(marketId, maker, 0);
-        uint256 received = _swap(lender, false, before.shares);
+        (uint256 received, SwapFees memory fees) = _swap(hook, lender, false, before.shares);
         uint256 afterDebt = midnight.debt(marketId, maker);
         uint256 afterCollateral = midnight.collateral(marketId, maker, 0);
         _require(note.balanceOf(lender) == 0 && midnight.debt(marketId, lender) == 0, "Exit left a lender position");
@@ -39,6 +40,7 @@ contract SellNotesDemo is DemoBase {
         _value("Position age", "7 days; funded by the preceding real fork swap");
         _value("Lender sells", _amount(before.shares, 6, "mgNOTE"));
         _value("Lender receives", _amount(received, 6, "USDC"));
+        _showSwapFees("Maker trading fee", fees);
         _value("Maker debt cancelled", _amount(before.debt - afterDebt, 6, "units"));
         _value("Collateral returned", _amount(before.collateral - afterCollateral, 18, "WETH"));
         _value("Remaining maker debt", _amount(afterDebt, 6, "units"));

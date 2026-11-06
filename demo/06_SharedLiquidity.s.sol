@@ -17,15 +17,15 @@ contract SharedLiquidityDemo is DemoBase {
         IMoongladeDeskHook second = _newDesk();
         _register(second);
         _require(USDC.balanceOf(maker) == BUDGET, "Registering another strategy moved cash");
-        uint256 firstOutput = _swap(lender, true, 10_000 * UNIT);
-        strategy = second.order();
-        uint256 secondOutput = _swap(lender, true, 10_000 * UNIT);
+        uint256 cashPerFill = 10_000 * UNIT;
+        (uint256 firstOutput, SwapFees memory firstFees) = _swap(hook, lender, true, cashPerFill);
+        (uint256 secondOutput, SwapFees memory secondFees) = _swap(second, lender, true, cashPerFill);
         (uint256 firstCash,) =
             AQUA.safeBalances(maker, address(router), hook.strategyHash(), address(USDC), address(note));
         (uint256 secondCash,) =
             AQUA.safeBalances(maker, address(router), second.strategyHash(), address(USDC), address(note));
         _require(
-            firstCash == BUDGET + 10_000 * UNIT && secondCash == BUDGET + 10_000 * UNIT, "Registry accounting mismatch"
+            firstCash == BUDGET + cashPerFill && secondCash == BUDGET + cashPerFill, "Registry accounting mismatch"
         );
         _require(USDC.balanceOf(address(second)) == 0, "Second hook retained cash");
         _heading("06 / Aqua shared liquidity");
@@ -33,7 +33,9 @@ contract SharedLiquidityDemo is DemoBase {
         _value("Registered strategies", "2 / same maker, same USDC wallet");
         _value("Initial combined budgets", _amount(2 * BUDGET, 6, "virtual USDC"));
         _value("First fill receives", _amount(firstOutput, 6, "mgNOTE"));
+        _showSwapFees("First swap fee", firstFees);
         _value("Second fill receives", _amount(secondOutput, 6, "mgNOTE"));
+        _showSwapFees("Second swap fee", secondFees);
         _value("Final maker wallet", _amount(USDC.balanceOf(maker), 6, "USDC"));
         _value("First virtual cash", _amount(firstCash, 6, "USDC"));
         _value("Second virtual cash", _amount(secondCash, 6, "USDC"));

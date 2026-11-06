@@ -14,9 +14,11 @@ interface IYieldSpaceCurve is IMoongladeCurve {
         uint64 sensitivity;
         /// @notice Minimum post-trade annual rate, scaled by WAD; zero and rates above 100% are valid.
         uint64 rateFloor;
+        /// @notice Maker-selected bid/ask fee in basis points; must be below 10,000, with zero disabling it.
+        uint16 feeBps;
     }
 
-    /// @notice Parameters are not exactly sixteen bytes or sensitivity is zero.
+    /// @notice Parameters are not exactly eighteen bytes, sensitivity is zero, or the fee is at least 100%.
     error YieldSpaceCurve__InvalidParameters();
     /// @notice The input or resulting trade has a zero quantity.
     error YieldSpaceCurve__ZeroAmount();
