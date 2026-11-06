@@ -26,7 +26,7 @@ case "${1:-all}" in
 esac
 
 # Build both exact compiler graphs before scripts load deployment artifacts.
-forge build --offline --no-lint --quiet
+forge build src script demo test --offline --no-lint --quiet
 
 run_script() {
   forge script "demo/$1" --offline --fork-url "$rpc_url" --fork-block-number "$fork_block" --color never -vv "${@:2}"

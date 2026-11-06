@@ -106,6 +106,34 @@ The demo forks **Base block 52,000,000** and calls the **deployed Aqua and Morph
 
 **Fixtures, stated plainly:** opening balances, a fixed $2,000/WETH oracle, a custom Midnight market configuration, and time travel are fork fixtures. Moonglade's contracts deploy locally (the custom opcode needs its own router). Each scene starts fresh; nothing is broadcast.
 
+## Deploy a desk
+
+Copy `.env.example` to `.env` and set the public deployer/maker addresses, an existing ungated `MARKET_ID`, and maker limits. The supplied Aqua/Midnight addresses are for Base; the demo's custom market exists only on the fork. Allow more than one day until maturity.
+
+```bash
+cp .env.example .env
+# Edit .env before continuing.
+forge soldeer install
+forge build src script demo test
+set -a; source .env; set +a
+forge script script/DeployProtocol.s.sol:DeployProtocol \
+  --rpc-url base --sender "$DEPLOYER_ADDRESS"
+```
+
+This simulates deploying the factory, ratifier, mgNOTE, curve, router, and inactive desk. To broadcast, repeat with `--broadcast --account <deployer-keystore-name>`.
+
+After deployment is confirmed, put the printed hook and curve addresses into `MOONGLADE_DESK_HOOK_ADDRESS` and `PRICING_CURVE_ADDRESS` in `.env`, then simulate maker setup:
+
+```bash
+set -a; source .env; set +a
+forge script script/ConfigureMaker.s.sol:ConfigureMaker \
+  --rpc-url base --sender "$MAKER_ADDRESS"
+```
+
+Repeat with `--broadcast --account <maker-keystore-name>` to apply approvals, configure pricing/risk limits, and register on Aqua. Dry-run deployments do not persist for a separate maker run. Signing uses Foundry wallet options; keep private keys out of `.env`.
+
+Maker setup authorizes the hook and ratifier on Midnight and grants Aqua/hook token allowances, defaulting to `uint256.max`; optional caps are listed in `.env.example`. These are separate transactions, so partial broadcasts may leave approvals in place. Example limits assume USDC with 6 decimals and WETH with 18; virtual balances are accounting budgets, not deposits. `TRADE_FEE_BPS=30` means 0.30%.
+
 ## Risks and limitations
 
 - **Desk collateral needs a keeper.** A desk posts collateral just in time for the debt it takes on, at the maker's target utilisation (80% in the demo). Collateral is not topped up automatically when prices fall; makers should run a keeper that calls `rebalance`, or choose a lower target.
