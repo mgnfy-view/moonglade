@@ -16,8 +16,6 @@ import { TickLib } from "midnight/src/libraries/TickLib.sol";
 
 import { IMoongladeNote } from "src/note/interfaces/IMoongladeNote.sol";
 
-import { MidnightTicks } from "src/libraries/MidnightTicks.sol";
-
 /// @title Moonglade Note.
 /// @author Sahil Gujrati (@mgnfy-view).
 /// @notice ERC-20 shares of one wrapper's net Midnight credit in one ungated market.
@@ -178,7 +176,8 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         uint256 backing = uint256(credit) - pendingFee;
         uint256 supply = totalSupply();
         if (supply != 0 && backing == 0) revert MoongladeNote__ZeroBacking();
-        uint256 front = Math.mulDiv(_units, _tickPrice(_offer.tick) + _settlementFee(), WAD, Math.Rounding.Ceil);
+        uint256 front =
+            Math.mulDiv(_units, TickLib.tickToPrice(_offer.tick) + _settlementFee(), WAD, Math.Rounding.Ceil);
         uint256 paid = _fundAndTake(_offer, _ratifierData, _units, front);
         uint256 shares = _issue(_receiver, backing, supply);
 
@@ -221,9 +220,6 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         if (_shares == 0) revert MoongladeNote__ZeroShares();
         (uint128 credit,,) = midnight.updatePosition(marketData, address(this));
         uint256 assets = Math.mulDiv(_shares, credit, totalSupply());
-        if (assets > midnight.withdrawable(marketId)) {
-            revert MoongladeNote__InsufficientRepaidLiquidity();
-        }
         _burn(msg.sender, _shares);
         if (assets != 0) midnight.withdraw(marketData, assets, address(this), _receiver);
 
@@ -237,9 +233,6 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         private
         returns (uint256, uint256)
     {
-        uint256 price = _tickPrice(_tick);
-        uint256 fee = _settlementFee();
-        if (price < fee) revert MoongladeNote__TickPriceBelowSettlementFee(price, fee);
         (uint128 credit,,) = midnight.updatePosition(marketData, address(this));
         uint256 units = _unitsForBurn(_shares, credit);
         _burn(msg.sender, _shares);
@@ -275,13 +268,12 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         private
         returns (uint256)
     {
-        uint256 price = _tickPrice(_tick);
+        uint256 price = TickLib.tickToPrice(_tick);
         (uint128 borrowerCredit,,) = midnight.updatePosition(marketData, _borrower);
         if (borrowerCredit != 0) revert MoongladeNote__ExistingCredit();
         (uint128 credit, uint128 pendingFee,) = midnight.updatePosition(marketData, address(this));
         uint256 backing = uint256(credit) - pendingFee;
         uint256 supply = totalSupply();
-        if (supply != 0 && backing == 0) revert MoongladeNote__ZeroBacking();
         uint256 front = Math.mulDiv(_units, price + _settlementFee(), WAD, Math.Rounding.Ceil);
         if (front > _maxFront) revert MoongladeNote__FrontExceedsLimit();
         _fundAndTake(_buildOffer(false, _units, _borrower, _tick), "", _units, front);
@@ -359,14 +351,8 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         return midnight.settlementFee(marketId, timeLeft);
     }
 
-    /// @dev Require a valid aligned market tick and convert its credit-unit price directly through Midnight.
-    function _tickPrice(uint256 _tick) private view returns (uint256) {
-        MidnightTicks.validate(_tick, midnight.tickSpacing(marketId));
-
-        return TickLib.tickToPrice(_tick);
-    }
-
-    /// @dev Build a borrower-made offer at a validated tick with a fresh nonce; caller activates its hash while taking it.
+    /// @dev Build a borrower-made offer with a fresh nonce; Midnight validates its tick during settlement.
+    /// The caller activates the offer hash while taking it.
     /// Sell-offer principal always returns to msg.sender, which supplied the temporary funding.
     function _buildOffer(bool _buy, uint256 _units, address _borrower, uint256 _tick) private returns (Offer memory) {
         Offer memory offer;

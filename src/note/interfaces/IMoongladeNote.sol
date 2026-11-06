@@ -72,10 +72,6 @@ interface IMoongladeNote is IERC20Metadata {
     error MoongladeNote__FrontExceedsLimit();
     /// @notice Net settlement fee exceeds the caller's limit.
     error MoongladeNote__CostExceedsLimit();
-    /// @notice A native debt-cancellation BUY tick has a price below its settlement fee.
-    /// @param _price Credit-unit price scaled by WAD.
-    /// @param _fee Current native per-unit settlement fee scaled by WAD.
-    error MoongladeNote__TickPriceBelowSettlementFee(uint256 _price, uint256 _fee);
     /// @notice Shares are zero or issuance rounds to zero after the initial reserve.
     error MoongladeNote__ZeroShares();
     /// @notice Existing supply has no backing or the continuous fee consumes all new credit.
@@ -88,8 +84,6 @@ interface IMoongladeNote is IERC20Metadata {
     error MoongladeNote__InvalidOffer();
     /// @notice Redemption requires market maturity.
     error MoongladeNote__MarketNotMatured();
-    /// @notice Borrowers have not repaid enough liquidity for this redemption.
-    error MoongladeNote__InsufficientRepaidLiquidity();
     /// @notice Share-targeted issuance requires more debt units than authorized.
     error MoongladeNote__UnitsExceedLimit();
     /// @notice Share-targeted issuance produced fewer shares than requested.
