@@ -1,0 +1,15 @@
+GIMP Palette
+Name: Moonglade
+Columns: 4
+#
+  8   1  86	Midnight 950 - background #080156
+  9   1  93	Midnight 500 - background alt #09015d
+ 27  14 168	Indigo 400 - surfaces #1b0ea8
+ 64  48 222	Indigo 300 - primary accent #4030de
+142 134 224	Lavender 200 - secondary text #8e86e0
+211 208 238	Lavender 100 - borders on light #d3d0ee
+242 241 249	Mist 50 - main text #f2f1f9
+201 203 217	Moonlight silver - highlight #c9cbd9
+242 211 138	Moon gold - attention #f2d38a
+ 91 181 168	Muted teal - chart series #5bb5a8
+217 139 160	Muted rose - chart series #d98ba0
