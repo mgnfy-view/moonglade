@@ -49,7 +49,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     uint256 private nonce;
     /// @notice Transient hash authorized only while taking an internal offer.
     bytes32 public transient activeOfferHash;
-    /// @notice Borrower-set debt-unit budgets and expirations for each delegated spender.
+    /// @notice Wallet-set gross-unit budgets and expirations for each delegated mint spender.
     mapping(address borrower => mapping(address spender => BorrowAllowance)) public borrowAllowances;
 
     /// @notice Fix the wrapper's market, registry, and ratifier and adopt the loan token's decimals.
@@ -69,13 +69,14 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         SafeERC20.forceApprove(loanToken, address(midnight), type(uint256).max);
     }
 
-    /// @notice Set or revoke the caller's bounded debt-origination delegation to a spender.
+    /// @notice Set or revoke the caller's bounded share-mint delegation to a spender.
     /// @dev Only msg.sender's allowance changes. Nonzero budgets require an unexpired deadline; zero revokes immediately.
     /// Scoped delegation permits only share-targeted mints to the borrower, within remaining units and expiry.
+    /// Its gross-unit budget covers both existing credit consumed and new debt originated.
     /// It authorizes neither burning nor other Midnight operations; the borrower separately authorizes the ratifier.
     /// @param _spender Delegate permitted to supply native-settlement cash float; must be nonzero.
-    /// @param _units Total remaining debt units authorized; zero revokes the delegation.
-    /// @param _deadline Latest timestamp at which nonzero delegated borrowing may execute.
+    /// @param _units Total remaining gross units authorized; zero revokes the delegation.
+    /// @param _deadline Latest timestamp at which nonzero delegated minting may execute.
     function approveBorrow(address _spender, uint128 _units, uint40 _deadline) external {
         if (_spender == address(0)) revert MoongladeNote__InvalidBorrowSpender();
         if (_units != 0 && block.timestamp > _deadline) revert MoongladeNote__BorrowExpired();
@@ -85,20 +86,20 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         emit BorrowApproval(msg.sender, _spender, _units, _deadline);
     }
 
-    /// @notice Borrow in an authorized wallet's Midnight position and issue at least the requested shares.
+    /// @notice Consume existing credit, then borrow any remainder, to issue at least the requested shares.
     /// @dev Self and Midnight-authorized operators retain their ordinary receiver choice. Other callers must have an
-    /// unexpired borrow allowance covering debt units and send every issued share to the borrower. Scoped allowance
+    /// unexpired borrow allowance covering gross units and send every issued share to the borrower. Scoped allowance
     /// is consumed before settlement. The borrower separately authorizes the shared ratifier on Midnight.
     /// Caller supplies a rounded-up cash budget at the selected credit-unit tick, receives principal directly,
     /// and is refunded any unused budget. Its net cash cost is the native settlement fee.
-    /// No operator is authorized on this wrapper's position. Debt units round up to issue at least the requested shares.
+    /// No operator is authorized on this wrapper's position. Gross units round up to issue at least the requested shares.
     /// @param _shares Minimum receiver shares; must be nonzero.
-    /// @param _maxUnits Maximum debt units to borrow.
+    /// @param _maxUnits Maximum gross units processed, including existing credit consumed and new debt originated.
     /// @param _maxFront Maximum gross loan-token float to transfer from the caller.
-    /// @param _borrower Nonzero wallet whose Midnight position incurs the debt.
+    /// @param _borrower Nonzero wallet whose Midnight credit is consumed before any new debt is originated.
     /// @param _receiver Share recipient; scoped delegation requires the borrower.
     /// @param _tick Valid aligned price tick per Midnight credit unit.
-    /// @return Debt units borrowed after upward rounding.
+    /// @return Gross units processed after upward rounding; new debt may be smaller or zero.
     /// @return Shares actually issued, including any integer-rounding excess.
     function mintForSharesOnBehalf(
         uint256 _shares,
@@ -262,7 +263,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         return (buyerAssets, sellerAssets);
     }
 
-    /// @dev Settle a borrower-made sell offer at the chosen credit-unit tick, then issue net-credit-backed shares.
+    /// @dev Settle a wallet-made sell offer at the chosen credit-unit tick, then issue net-credit-backed shares.
     /// Minting follows settlement to measure actual net credit. The transient hash limits ratification, and callers
     /// guard reentrancy across external token and Midnight calls.
     function _mint(uint256 _units, uint256 _maxFront, address _borrower, address _receiver, uint256 _tick)
@@ -270,8 +271,6 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         returns (uint256)
     {
         uint256 price = TickLib.tickToPrice(_tick);
-        (uint128 borrowerCredit,,) = midnight.updatePosition(marketData, _borrower);
-        if (borrowerCredit != 0) revert MoongladeNote__ExistingCredit();
         (uint128 credit, uint128 pendingFee,) = midnight.updatePosition(marketData, address(this));
         uint256 backing = uint256(credit) - pendingFee;
         uint256 supply = totalSupply();
@@ -316,7 +315,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         }
     }
 
-    /// @dev Require nonzero uint128-compatible debt units and a market that has not matured.
+    /// @dev Require nonzero uint128-compatible credit units and a market that has not matured.
     function _checkMintUnits(uint256 _units) private view {
         if (_units == 0 || _units > type(uint128).max) revert MoongladeNote__InvalidUnits();
         if (block.timestamp >= maturity) revert MoongladeNote__MarketMatured();
@@ -418,11 +417,11 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         return uint256(credit) - pendingFee;
     }
 
-    /// @notice Return the minimum debt units issuing at least the requested shares before maturity.
+    /// @notice Return the minimum gross credit units issuing at least the requested shares before maturity.
     /// @dev Reads Midnight fees and backing, rounds units up, and includes the initial minimum-share reserve.
     /// Cash funding is computed separately as ceil(units * (tickPrice + settlementFee) / WAD).
     /// @param _shares Minimum receiver shares; must be nonzero.
-    /// @return Debt units required after fee rounding.
+    /// @return Gross units required after fee rounding, independent of the wallet's existing credit.
     function previewMintUnits(uint256 _shares) public view returns (uint256) {
         if (_shares == 0) revert MoongladeNote__ZeroShares();
         if (block.timestamp >= maturity) revert MoongladeNote__MarketMatured();

@@ -10,26 +10,26 @@ import { IMidnight, Market, Offer } from "midnight/src/interfaces/IMidnight.sol"
 /// @notice Integration surface for ERC-20 shares of a single Midnight credit position.
 /// @dev Typed getters match the public immutable variables in the note implementation.
 interface IMoongladeNote is IERC20Metadata {
-    /// @notice Borrower-set debt-unit budget for scoped share-targeted mints to the borrower only.
+    /// @notice Wallet-set gross-unit budget for scoped share-targeted mints to that wallet only.
     struct BorrowAllowance {
-        /// @notice Debt units still available to the spender across future originations.
+        /// @notice Gross units still available, covering both credit consumption and new debt origination.
         uint128 remainingUnits;
         /// @notice Latest timestamp at which the allowance may be consumed.
         uint40 deadline;
     }
 
-    /// @notice A borrower replaced or revoked a spender's standing debt-unit allowance.
-    /// @param _borrower Wallet whose new debt may be originated.
+    /// @notice A wallet replaced or revoked a spender's standing gross-unit mint allowance.
+    /// @param _borrower Wallet whose existing credit may be consumed and new debt may be originated.
     /// @param _spender Delegate authorized to fund native issuance with every issued share sent to the borrower.
-    /// @param _remainingUnits New debt-unit budget; zero revokes the delegation.
+    /// @param _remainingUnits New gross-unit budget; zero revokes the delegation.
     /// @param _deadline Latest timestamp at which the new budget may be consumed.
     event BorrowApproval(
         address indexed _borrower, address indexed _spender, uint128 _remainingUnits, uint40 _deadline
     );
-    /// @notice Shares issued against a borrower's newly created net credit.
-    /// @param _borrower Wallet whose Midnight debt increased.
+    /// @notice Shares issued against net credit received by the note.
+    /// @param _borrower Wallet whose Midnight credit decreased or debt increased.
     /// @param _receiver Recipient of issued shares.
-    /// @param _units Gross debt units borrowed.
+    /// @param _units Gross credit units sold to the note; new debt may be smaller or zero.
     /// @param _shares Receiver shares issued.
     /// @param _front Gross cash float transferred for settlement.
     event Minted(address indexed _borrower, address indexed _receiver, uint256 _units, uint256 _shares, uint256 _front);
@@ -62,12 +62,10 @@ interface IMoongladeNote is IERC20Metadata {
     /// @param _assets Loan tokens withdrawn.
     event Redeemed(address indexed _caller, address indexed _receiver, uint256 _shares, uint256 _assets);
 
-    /// @notice Debt units are zero or exceed Midnight's uint128 position limit.
+    /// @notice Gross units are zero or exceed Midnight's uint128 position limit.
     error MoongladeNote__InvalidUnits();
     /// @notice New credit cannot be minted after market maturity.
     error MoongladeNote__MarketMatured();
-    /// @notice The borrower already has credit in the market.
-    error MoongladeNote__ExistingCredit();
     /// @notice Gross settlement float exceeds the caller's limit.
     error MoongladeNote__FrontExceedsLimit();
     /// @notice Net settlement fee exceeds the caller's limit.
@@ -84,7 +82,7 @@ interface IMoongladeNote is IERC20Metadata {
     error MoongladeNote__InvalidOffer();
     /// @notice Redemption requires market maturity.
     error MoongladeNote__MarketNotMatured();
-    /// @notice Share-targeted issuance requires more debt units than authorized.
+    /// @notice Share-targeted issuance requires more gross units than authorized.
     error MoongladeNote__UnitsExceedLimit();
     /// @notice Share-targeted issuance produced fewer shares than requested.
     error MoongladeNote__InsufficientIssuedShares();
@@ -98,10 +96,10 @@ interface IMoongladeNote is IERC20Metadata {
     error MoongladeNote__InvalidBorrowSpender();
     /// @notice The borrower-set standing allowance or its approval deadline has expired.
     error MoongladeNote__BorrowExpired();
-    /// @notice The requested debt increase exceeds the borrower's remaining delegated units.
+    /// @notice The gross units processed exceed the wallet's remaining delegated budget.
     error MoongladeNote__BorrowAllowanceExceeded();
     /// @notice A scoped borrow delegate attempted to mint shares to someone other than the borrower.
-    /// @param _borrower Wallet whose debt would increase and which must receive all issued shares.
+    /// @param _borrower Wallet whose credit or debt would change and which must receive all issued shares.
     /// @param _receiver Requested share recipient.
     error MoongladeNote__InvalidBorrowReceiver(address _borrower, address _receiver);
 
