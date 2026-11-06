@@ -1,0 +1,105 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  Common configuration
+    Network                     Base fork / chain 8453
+    Fork block                  52000000
+    Official Aqua               0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a
+    Official Midnight           0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A
+    Custom SwapVM router        0xcD95e0E356A5f414894Be4bAD363acdaCcAb30a9
+    Custom WETH/USDC market     0xf5b2ab7a90c1d1c7eedbdbaed8fbd54feb99dc75cb5393c97454c0c6049d11c3
+    Market configuration        Fork-only governance impersonation
+    Opening balances            Fork fixtures; no live funds used
+    Collateral oracle           Fixed $2,000/WETH demo fixture
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  01 / Maker setup
+    Maker                       0x135af1901D1B81a27eE64A9D8fd8cbe1D38c28FE
+    Strategy hash               0x6f74b50fbd7d16b183c53b0a97191a09fcb359ee4a61dd41d9951b75da68273d
+    Maker cash                  1,000,000.000000 USDC
+    Maker idle collateral       1,000.000000 WETH
+    Virtual cash budget         1,000,000.000000 USDC
+    Virtual note budget         2,225,540.928492 mgNOTE
+    Starting annual rate        8.00%
+    Market maturity             1806341347 / 180 days from fork
+    [OK] Aqua registration is active; all idle funds remain with the maker
+    [OK] No notes or maker debt exist before the first fill
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  02 / Lend: USDC -> mgNOTE
+    Lender pays                 10,000.000000 USDC
+    Lender receives             10,394.873165 mgNOTE
+    Net face value              10,394.873165 USDC
+    Maker debt created          10,420.568717 units
+    Maker collateral posted     8.141069 WETH
+    Native settlement fee       5.210285 USDC
+    Maker cash after fill       1,009,994.789715 USDC
+    Curve annual rate           8.00% -> 7.85%
+    [OK] Executed transfers equal the quote, with a minimum-output bound
+    [OK] Inventory minted on demand; unused mint float returned to the maker
+    [OK] The lender holds mgNOTE and has no borrower debt
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  03 / Sell notes: mgNOTE -> USDC
+    Position age                7 days; funded by the preceding real fork swap
+    Lender sells                10,394.873165 mgNOTE
+    Lender receives             10,007.526927 USDC
+    Maker debt cancelled        10,419.568482 units
+    Collateral returned         8.140287 WETH
+    Remaining maker debt        1.000235 units
+    Curve annual rate           7.85% -> 8.01%
+    [OK] The reverse swap transfers real USDC to the lender
+    [OK] Purchased notes cancel maker debt and release surplus collateral
+    [OK] The lender exits without borrowing
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  04 / Borrow USDC in one swap
+    Starting mgNOTE             0.000000 mgNOTE
+    Collateral supplied         100.000000 WETH
+    Scoped mint budget          10,024.719486 units
+    Borrower receives           9,605.221000 USDC
+    Borrower debt               10,024.719486 units
+    Unused mint consent         0.000000 units
+    Maker note inventory        10,000.000000 mgNOTE
+    Curve annual rate           8.00% -> 8.14%
+    [OK] The hook mints the borrower's shortfall and the router sells it for USDC
+    [OK] Debt belongs to the borrower; no mgNOTE remains in their wallet
+    [OK] Only the exact approved gross-unit budget was consumed
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  05 / Maturity and redemption
+    Clock advanced              180 days to maturity (fork-only time travel)
+    Original lender payment     10,000.000000 USDC
+    Shares redeemed             10,394.873165 mgNOTE
+    Lender receives             10,394.873165 USDC
+    Lender gain                 394.873165 USDC
+    Maker repayment             10,420.568717 USDC
+    Collateral returned         8.141069 WETH
+    [OK] Actual repayment funded the lender's USDC redemption
+    [OK] Maker debt cleared, collateral returned, and Aqua strategy docked
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  06 / Aqua shared liquidity
+    Opening maker cash          1,000,000.000000 USDC
+    Registered strategies       2 / same maker, same USDC wallet
+    Initial combined budgets    2,000,000.000000 virtual USDC
+    First fill receives         10,394.873165 mgNOTE
+    Second fill receives        10,394.873165 mgNOTE
+    Final maker wallet          1,019,989.579432 USDC
+    First virtual cash          1,010,000.000000 USDC
+    Second virtual cash         1,010,000.000000 USDC
+    [OK] Both strategies execute through official Aqua against one maker wallet
+    [OK] Registration allocates virtual budgets without duplicating deposits
