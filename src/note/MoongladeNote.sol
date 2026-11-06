@@ -171,7 +171,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         returns (uint256)
     {
         _checkMintUnits(_units);
-        _checkExternalOffer(_offer, false, _receiver);
+        _checkExternalOffer(_offer, false);
         (uint128 credit, uint128 pendingFee,) = midnight.updatePosition(marketData, address(this));
         uint256 backing = uint256(credit) - pendingFee;
         uint256 supply = totalSupply();
@@ -198,7 +198,8 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         nonReentrant
         returns (uint256)
     {
-        _checkExternalOffer(_offer, true, _receiver);
+        if (_receiver == address(0)) revert ERC20InvalidReceiver(_receiver);
+        _checkExternalOffer(_offer, true);
         (uint128 credit,,) = midnight.updatePosition(marketData, address(this));
         uint256 units = _unitsForBurn(_shares, credit);
         _burn(msg.sender, _shares);
@@ -308,9 +309,8 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         return shares;
     }
 
-    /// @dev Require a nonzero receiver and an external-ratifier offer of the expected direction in this market.
-    function _checkExternalOffer(Offer calldata _offer, bool _buy, address _receiver) private view {
-        if (_receiver == address(0)) revert ERC20InvalidReceiver(_receiver);
+    /// @dev Require an external-ratifier offer of the expected direction in this market.
+    function _checkExternalOffer(Offer calldata _offer, bool _buy) private view {
         if (_offer.buy != _buy || _offer.ratifier == ratifier || IdLib.toId(_offer.market) != marketId) {
             revert MoongladeNote__InvalidOffer();
         }
