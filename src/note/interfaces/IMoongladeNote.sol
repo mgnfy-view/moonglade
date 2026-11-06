@@ -9,6 +9,7 @@ import { IMidnight, Market, Offer } from "midnight/src/interfaces/IMidnight.sol"
 /// @author Sahil Gujrati (@mgnfy-view).
 /// @notice Integration surface for ERC-20 shares of a single Midnight credit position.
 /// @dev Typed getters match the public immutable variables in the note implementation.
+/// Valuation and preview reads revert while a note settlement is in progress.
 interface IMoongladeNote is IERC20Metadata {
     /// @notice Wallet-set gross-unit budget for scoped share-targeted mints to that wallet only.
     struct BorrowAllowance {

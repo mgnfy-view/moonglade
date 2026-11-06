@@ -24,6 +24,7 @@ import { IMoongladeNote } from "src/note/interfaces/IMoongladeNote.sol";
 /// Only standard ERC-20 loan tokens are supported; fee-on-transfer and rebasing tokens are unsupported.
 /// Settlement preserves prior cash: the note holds no loan tokens between calls unless directly donated or named
 /// as a cash receiver. Midnight has permanent cash allowance and is already trusted with the note's credit.
+/// Valuation and preview reads revert during settlement, while backing and share supply may be inconsistent.
 contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @notice Initial shares permanently reserved against first-depositor rounding manipulation.
     uint256 public constant MINIMUM_SHARES = 1000;
@@ -51,6 +52,12 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     bytes32 public transient activeOfferHash;
     /// @notice Wallet-set gross-unit budgets and expirations for each delegated mint spender.
     mapping(address borrower => mapping(address spender => BorrowAllowance)) public borrowAllowances;
+
+    /// @dev Prevent callbacks from pricing shares against an intermediate settlement state.
+    modifier nonReentrantView() {
+        if (_reentrancyGuardEntered()) revert ReentrancyGuardReentrantCall();
+        _;
+    }
 
     /// @notice Fix the wrapper's market, registry, and ratifier and adopt the loan token's decimals.
     /// @dev Factory deployment and its registry establish ratifier eligibility; token metadata is an external call.
@@ -110,7 +117,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
         uint256 _tick
     ) external nonReentrant returns (uint256, uint256) {
         if (_borrower == address(0)) revert MoongladeNote__InvalidBorrower();
-        uint256 units = previewMintUnits(_shares);
+        uint256 units = _previewMintUnits(_shares);
         if (units > _maxUnits) revert MoongladeNote__UnitsExceedLimit();
         if (_borrower != msg.sender && !midnight.isAuthorized(_borrower, msg.sender)) {
             if (_receiver != _borrower) {
@@ -301,7 +308,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
 
     /// @dev Issue shares only against measured net-credit growth, retaining the initial dead-share reserve.
     function _issue(address _receiver, uint256 _backingBefore, uint256 _supplyBefore) private returns (uint256) {
-        uint256 shares = _sharesForMint(totalAssets() - _backingBefore, _backingBefore, _supplyBefore);
+        uint256 shares = _sharesForMint(_totalAssets() - _backingBefore, _backingBefore, _supplyBefore);
         if (_supplyBefore == 0) _mint(DEAD_SHARES, MINIMUM_SHARES);
         _mint(_receiver, shares);
 
@@ -382,10 +389,10 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @notice Return loan-token face value per whole share, scaled by 1e18.
     /// @dev Reads updated Midnight credit, rounds down, and returns zero for empty supply; liquidity is separate.
     /// @return Net face value per share scaled by 1e18.
-    function payoutPerShare() external view returns (uint256) {
+    function payoutPerShare() external view nonReentrantView returns (uint256) {
         uint256 supply = totalSupply();
 
-        return supply == 0 ? 0 : Math.mulDiv(totalAssets(), WAD, supply);
+        return supply == 0 ? 0 : Math.mulDiv(_totalAssets(), WAD, supply);
     }
 
     /// @notice Estimate proportional gross credit released and a conservative net settlement-fee bound.
@@ -394,7 +401,7 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @param _shares Shares to burn; must release nonzero units.
     /// @return Gross credit units released.
     /// @return Conservative loan-token fee bound, rounded up; actual tick-based native fee may be lower.
-    function previewBurn(uint256 _shares) external view returns (uint256, uint256) {
+    function previewBurn(uint256 _shares) external view nonReentrantView returns (uint256, uint256) {
         (uint128 credit,,) = midnight.updatePositionView(marketData, marketId, address(this));
         uint256 units = _unitsForBurn(_shares, credit);
         uint256 cost = Math.mulDiv(units, _settlementFee(), WAD, Math.Rounding.Ceil);
@@ -411,7 +418,12 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// @notice Return net face value after losses and all remaining continuous fees.
     /// @dev Reads Midnight's updated position; direct loan-token donations do not affect backing or issuance.
     /// @return Net loan-token credit backing all shares.
-    function totalAssets() public view returns (uint256) {
+    function totalAssets() public view nonReentrantView returns (uint256) {
+        return _totalAssets();
+    }
+
+    /// @dev Read net backing for internal settlement without exposing intermediate state to callbacks.
+    function _totalAssets() private view returns (uint256) {
         (uint128 credit, uint128 pendingFee,) = midnight.updatePositionView(marketData, marketId, address(this));
 
         return uint256(credit) - pendingFee;
@@ -422,11 +434,16 @@ contract MoongladeNote is IMoongladeNote, ERC20, ReentrancyGuardTransient {
     /// Cash funding is computed separately as ceil(units * (tickPrice + settlementFee) / WAD).
     /// @param _shares Minimum receiver shares; must be nonzero.
     /// @return Gross units required after fee rounding, independent of the wallet's existing credit.
-    function previewMintUnits(uint256 _shares) public view returns (uint256) {
+    function previewMintUnits(uint256 _shares) public view nonReentrantView returns (uint256) {
+        return _previewMintUnits(_shares);
+    }
+
+    /// @dev Shared mint calculation; guarded entry points may call this during their own settlement.
+    function _previewMintUnits(uint256 _shares) private view returns (uint256) {
         if (_shares == 0) revert MoongladeNote__ZeroShares();
         if (block.timestamp >= maturity) revert MoongladeNote__MarketMatured();
         uint256 supply = totalSupply();
-        uint256 backing = totalAssets();
+        uint256 backing = _totalAssets();
         if (supply != 0 && backing == 0) revert MoongladeNote__ZeroBacking();
         uint256 value =
             supply == 0 ? _shares + MINIMUM_SHARES : Math.mulDiv(_shares, backing, supply, Math.Rounding.Ceil);
