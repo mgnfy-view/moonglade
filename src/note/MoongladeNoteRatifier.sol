@@ -31,7 +31,8 @@ contract MoongladeNoteRatifier is IMoongladeNoteRatifier {
     // ==================== External views ====================
 
     /// @notice Authorize only a registered note's exact transient internal offer.
-    /// @dev Rejects other callers, nonempty data, wrong ratifiers, and inactive or mismatched hashes.
+    /// @dev Rejects other callers, nonempty data, unregistered takers, and inactive or mismatched hashes.
+    /// Midnight dispatches the callback to the ratifier named in the offer.
     /// Calls the fixed registry and then the authenticated note's context; neither call mutates state.
     /// @param _offer Offer being settled by Midnight.
     /// @param _ratifierData Must be empty for wrapper-issued offers.
@@ -42,7 +43,7 @@ contract MoongladeNoteRatifier is IMoongladeNoteRatifier {
         view
         returns (bytes32)
     {
-        if (msg.sender != midnight || _ratifierData.length != 0 || _offer.ratifier != address(this)) {
+        if (msg.sender != midnight || _ratifierData.length != 0) {
             return bytes32(0);
         }
         if (!factory.isMoongladeNote(_taker)) return bytes32(0);
