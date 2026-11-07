@@ -10,8 +10,9 @@ as **mgNOTE**, a transferable share of that credit.
 
 **ETHGlobal Mumbai 2026 · 1inch: Build an Aqua App** · Base mainnet + fork demo · Solidity / Foundry
 
-[How it works](#how-it-works) · [Live Base desk](#base-mainnet-deployment) · [Run the demo](#run-the-demo) · [Verified
-output](demo/output.txt) · [Risks](#risks-and-limitations) · [Whitepaper](docs/Moonglade-Whitepaper.pdf)
+[How it works](#how-it-works) · [Live transactions](#live-base-transactions) · [Live Base desk](#base-mainnet-deployment) ·
+[Run the demo](#run-the-demo) · [Fork output](demo/output.txt) · [Risks](#risks-and-limitations) ·
+[Whitepaper](docs/Moonglade-Whitepaper.pdf)
 
 ---
 
@@ -93,6 +94,25 @@ flowchart TD
     Hook -->|"Mint or burn"| Note["mgNOTE"]
     Note -->|"Credit, debt, repayment"| Midnight["Morpho Midnight"]
 ```
+
+## Live Base transactions
+
+**Real funds, confirmed on Base mainnet.** One maker strategy; lending, borrowing, and early exit through the AMM.
+This desk uses USDC with WETH collateral. Moonglade supports other Morpho Midnight markets.
+
+| Flow | Confirmed transaction | Result |
+| --- | --- | --- |
+| **1. Maker strategy created** | [Register on Aqua](https://basescan.org/tx/0x41d1b8b13b099b369e0c9bdbde6ce258b58de13763b4fb631b6a72a2072a2330) | Ship virtual budgets of **10 USDC / 22.255409 mgNOTE**; idle funds stay in the maker wallet |
+| **2. Lend on the AMM** | [Lend](https://basescan.org/tx/0x4ad8fb40fe0fb439ffc71360c97f15d7b32900dbc0ce503af89c6fbe49604e5f) | **0.100000 USDC → 0.100753 mgNOTE**; notes minted during settlement |
+| **3. Borrow on the AMM** | [Borrow](https://basescan.org/tx/0x8b8689edca1edcfb10f2a7d359b7b093f9c65f2e23d2964438b68f15f84a5110) | Receive **0.100000 USDC**; create **0.101397 USDC debt** against the borrower's own collateral |
+| **4. Exit early on the AMM** | [Exit](https://basescan.org/tx/0x2b99035044ec4fc310d1ea9c10abc245e84a8d14a0e4a6f03467499d1fd9110d) | **0.100750 mgNOTE → 0.099386 USDC**; burn purchased notes, cancel maker debt, release collateral |
+
+Historical-state calculations matched all three fills exactly, including the **0.30% maker fee** and Midnight tick
+rounding. These rows group the flows for presentation; the mined order was **maker → lend → exit → borrow**. The
+borrow used the **0.000003 mgNOTE** left after the exit. Collateral and approvals were set up before the borrow swap.
+
+[Mainnet output and math checks](demo/mainnet-output.md) records the receipts, blocks, amounts, and position changes.
+The [fork output](demo/output.txt) separately covers larger trades, maturity redemption, and shared liquidity.
 
 ## Base mainnet deployment
 
@@ -181,8 +201,8 @@ and 10 mgNOTE to each of Aqua and the hook**, plus **0.003 WETH to the hook**. T
 and may need renewal after repeated swaps.
 
 Deployment uses [DeployProtocol.s.sol](script/DeployProtocol.s.sol); maker authorization, configuration, and
-registration use [ConfigureMaker.s.sol](script/ConfigureMaker.s.sol). The snapshot records deployed bytecode and live
-registration; the swap scenarios below execute independently on a Base fork.
+registration use [ConfigureMaker.s.sol](script/ConfigureMaker.s.sol). The live transactions above use this desk; the
+runnable scenarios below execute independently on a Base fork.
 
 </details>
 
@@ -293,7 +313,7 @@ budgets, not deposits. `TRADE_FEE_BPS=30` means 0.30%.
 | --- | --- |
 | **A custom Aqua app with a sophisticated DeFi position** | A desk managing shared cash, tokenized credit, collateral, and debt across its full lifecycle (`lend`, `sell`, `borrow`, `maturity`) |
 | **SwapVM use** | Custom instruction `0xd0` on a router extending SwapVM v1.0.2, plus three settlement hooks; see [router](src/routers/MoongladeRouter.sol) and [opcode table](src/opcodes/MoongladeOpcodes.sol) |
-| **Onchain token transfers in the demo** | Every scene moves USDC, WETH, or mgNOTE on a Base fork; see [recorded output](demo/output.txt) |
+| **Onchain token transfers in the demo** | Confirmed [mainnet lend, borrow, and exit](demo/mainnet-output.md), plus [fork scenarios](demo/output.txt) moving USDC, WETH, and mgNOTE |
 | **Commit history** | [Repository history](https://github.com/mgnfy-view/moonglade/commits/main/) records the implementation and documentation changes |
 
 ## Prior art and positioning
