@@ -1,15 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560" width="560" height="560" fill="none">
-  <g stroke="#d3d0ee" stroke-width="1">
-    <path d="M64 112H496M64 176H496M64 240H496M64 304H496M64 368H496M64 432H496"/>
-    <path d="M112 64V496M176 64V496M240 64V496M304 64V496M368 64V496M432 64V496" opacity=".55"/>
-  </g>
-  <path d="M64 432C176 432 184 112 496 112V144C200 144 192 464 64 464Z" fill="#d3d0ee" opacity=".5"/>
-  <path d="M64 464C192 464 200 144 496 144" stroke="#8e86e0" stroke-width="2"/>
-  <path d="M64 432C176 432 184 112 496 112" stroke="#080156" stroke-width="3"/>
-  <path d="M205 272H368V432" stroke="#8e86e0" stroke-width="1" stroke-dasharray="3 7"/>
-  <path d="M64 496H496M64 64V496" stroke="#080156" stroke-width="1" opacity=".4"/>
-  <circle cx="64" cy="432" r="4" fill="#080156"/>
-  <circle cx="496" cy="112" r="4" fill="#080156"/>
-  <rect x="197" y="264" width="16" height="16" fill="#f2f1f9" stroke="#4030de" stroke-width="2"/>
-  <path d="M353 427L368 442L383 427M353 449L368 464L383 449" stroke="#4030de" stroke-width="1.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560" width="560" height="560">
+  <circle cx="280" cy="154" r="118" fill="#080156"/>
+  <rect x="56" y="312" width="448" height="3" fill="#080156"/>
+  <rect x="56" y="345" width="448" height="5" fill="#4030de" opacity=".45"/>
+  <rect x="56" y="380" width="448" height="8" fill="#8e86e0" opacity=".60"/>
+  <rect x="56" y="417" width="448" height="12" fill="#8e86e0" opacity=".42"/>
+  <rect x="56" y="458" width="448" height="17" fill="#8e86e0" opacity=".28"/>
+  <rect x="56" y="503" width="448" height="23" fill="#8e86e0" opacity=".16"/>
 </svg>
