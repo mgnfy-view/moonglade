@@ -14,4 +14,4 @@ Moonglade's original UI code is covered by the repository's MIT license. Install
 | React Router | MIT |
 | Lucide icons | ISC |
 
-Switzer font files were supplied in `docs/brand/switzer-font-family.zip`. Its accompanying notice is retained in `public/fonts/Befonts-License.txt`. Font files retain their own terms.
+Switzer font files were supplied in `../../docs/brand/switzer-font-family.zip`. Its accompanying notice is retained in `public/fonts/Befonts-License.txt`. Font files retain their own terms.

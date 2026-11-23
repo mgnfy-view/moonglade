@@ -206,6 +206,28 @@ runnable scenarios below execute independently on a Base fork.
 
 </details>
 
+## Development workspace
+
+```text
+apps/web/             React, TypeScript, Vite, RainbowKit frontend
+packages/contracts/   Foundry sources, tests, scripts, demos, and Soldeer dependencies
+docs/                 Whitepaper and brand assets
+```
+
+Use Node.js 24 (`.node-version`) and pnpm 10.25.0 (`packageManager`). From the repository root:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev                  # frontend at http://localhost:5173
+pnpm build:web            # frontend production build
+pnpm contracts:deps       # install pinned Solidity dependencies
+pnpm build                # build both workspaces
+pnpm check                # frontend types and Solidity formatting
+pnpm test                 # existing Solidity unit tests
+```
+
+Frontend work lives in [apps/web](apps/web/README.md).
+
 ## Run the demo
 
 Install [Foundry](https://getfoundry.sh/) with Solidity **0.8.30**, **0.8.34**, and the **Osaka** EVM target. From the

@@ -1,0 +1,21 @@
+{
+  "name": "moonglade",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.25.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @moonglade/web dev",
+    "build": "pnpm -r build",
+    "build:web": "pnpm --filter @moonglade/web build",
+    "build:contracts": "pnpm --filter @moonglade/contracts build",
+    "check": "pnpm -r check",
+    "test": "pnpm --filter @moonglade/contracts test",
+    "format:contracts": "pnpm --filter @moonglade/contracts format",
+    "contracts:deps": "pnpm --filter @moonglade/contracts deps",
+    "demo": "pnpm --filter @moonglade/contracts demo",
+    "preview": "pnpm --filter @moonglade/web preview"
+  }
+}

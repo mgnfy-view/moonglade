@@ -1,0 +1,13 @@
+{
+  "name": "@moonglade/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "deps": "forge soldeer install",
+    "build": "forge build src script demo test",
+    "check": "forge fmt --check src script demo test",
+    "format": "forge fmt src script demo test",
+    "test": "forge test --match-path 'test/unit/**/*.t.sol' -vv",
+    "demo": "bash demo/run.sh"
+  }
+}
