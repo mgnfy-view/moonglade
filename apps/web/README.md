@@ -19,4 +19,10 @@ Browser wallets work without a WalletConnect project ID. Never copy the contract
 Integration code is in `src/hooks/useMoonglade.ts` and `src/lib/`. Contract addresses are in `src/lib/contracts.ts`;
 the temporary maker directory is in `src/lib/makers.ts`. Solidity lives in `../../packages/contracts`.
 
+Next frontend scope: maker desk creation, configuration, management, and dynamic discovery. These features are not
+implemented by the workspace migration. Preserve the current brand and existing trade behavior while developing them.
+
+For a separate development Vercel project, use production branch `dev`, root `apps/web`, preset **Vite**,
+build `pnpm build`, output `dist`. Keep the existing production project on `main` with its `ui` root until the
+migration is merged. SPA routing is in `vercel.json`.
 Dependency and font notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

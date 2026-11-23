@@ -208,6 +208,8 @@ runnable scenarios below execute independently on a Base fork.
 
 ## Development workspace
 
+Development continues on `dev`; `main` remains the ETHGlobal submission under review.
+
 ```text
 apps/web/             React, TypeScript, Vite, RainbowKit frontend
 packages/contracts/   Foundry sources, tests, scripts, demos, and Soldeer dependencies
@@ -226,7 +228,13 @@ pnpm check                # frontend types and Solidity formatting
 pnpm test                 # existing Solidity unit tests
 ```
 
-Frontend work lives in [apps/web](apps/web/README.md).
+Frontend work lives in [apps/web](apps/web/README.md). The current directory lists one deployed desk; maker creation,
+configuration, management, and dynamic discovery are the next frontend work, not part of this migration.
+
+For a separate development Vercel project, set its production branch to `dev`, root directory to `apps/web`, preset to
+Vite, build to `pnpm build`, and output to `dist`. Keep the existing production project on `main` with root `ui` while
+the ETHGlobal review is ongoing. Pointing that production project at `apps/web` must wait until it deploys the migrated
+branch.
 
 ## Run the demo
 
