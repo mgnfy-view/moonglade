@@ -1,8 +1,15 @@
-# Foundry outputs and Soldeer downloads (keep soldeer.lock).
-/out/
-/cache/
-/broadcast/
-/dependencies/
+# Package-manager dependencies and local caches.
+node_modules/
+.pnpm-store/
+
+# Workspace build and deployment outputs.
+dist/
+*.tsbuildinfo
+.vercel/
+/packages/contracts/out/
+/packages/contracts/cache/
+/packages/contracts/broadcast/
+/packages/contracts/dependencies/
 
 # Local configuration and credentials.
 .env

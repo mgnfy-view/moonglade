@@ -1,11 +1,11 @@
 ---
 name: solidity-style
-description: Apply Moonglade's Solidity coding and API conventions when creating, modifying, or reviewing contracts, libraries, interfaces, tests, and scripts under src/, test/, and script/. Covers naming, imports, NatSpec, storage visibility, getters, and contract layout. Do not use for non-Solidity work.
+description: Apply Moonglade's Solidity coding and API conventions when creating, modifying, or reviewing contracts, libraries, interfaces, tests, and scripts under packages/contracts/src/, packages/contracts/test/, and packages/contracts/script/. Covers naming, imports, NatSpec, storage visibility, getters, and contract layout. Do not use for non-Solidity work.
 ---
 
 # Solidity Style
 
-Apply these rules to Moonglade's Solidity under `src/`, `test/`, and `script/`. Inspect neighboring files and `foundry.toml` before editing. Preserve established local structure unless this skill states a mandatory rule. Do not restyle third-party code under `dependencies/`.
+Apply these rules to Moonglade's Solidity workspace at `packages/contracts/`, including its `src/`, `test/`, and `script/` directories. All paths below are relative to that package root. Inspect neighboring files and `foundry.toml` before editing. Preserve established local structure unless this skill states a mandatory rule. Do not restyle third-party code under `dependencies/`.
 
 ## Tooling and files
 
@@ -13,7 +13,7 @@ Apply these rules to Moonglade's Solidity under `src/`, `test/`, and `script/`. 
 - Let `forge fmt` enforce four-space indentation, import sorting, and the 120-character line limit.
 - Name contracts, libraries, and interfaces `PascalCase.sol`; name tests `*.t.sol` and scripts `*.s.sol`.
 - Declare one interface per file.
-- Use workspace-root import paths such as `src/...`, `test/...`, and dependency remappings. Do not add `./` or `../` imports.
+- Use Foundry-package-root import paths such as `src/...`, `test/...`, and dependency remappings. Do not add `./` or `../` imports.
 
 ## Imports
 
@@ -81,7 +81,7 @@ Use existing libraries under `src/libraries/` when they already implement the ne
 
 ## Validate
 
-After Solidity changes, run from the repository root:
+After Solidity changes, run from `packages/contracts`:
 
 ```bash
 forge fmt

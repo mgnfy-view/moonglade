@@ -11,7 +11,7 @@ as **mgNOTE**, a transferable share of that credit.
 **ETHGlobal Mumbai 2026 · 1inch: Build an Aqua App** · Base mainnet + fork demo · Solidity / Foundry
 
 [How it works](#how-it-works) · [Live transactions](#live-base-transactions) · [Live Base desk](#base-mainnet-deployment) ·
-[Run the demo](#run-the-demo) · [Fork output](demo/output.txt) · [Risks](#risks-and-limitations) ·
+[Run the demo](#run-the-demo) · [Fork output](packages/contracts/demo/output.txt) · [Risks](#risks-and-limitations) ·
 [Whitepaper](docs/Moonglade-Whitepaper.pdf)
 
 ---
@@ -111,8 +111,8 @@ Historical-state calculations matched all three fills exactly, including the **0
 rounding. These rows group the flows for presentation; the mined order was **maker → lend → exit → borrow**. The
 borrow used the **0.000003 mgNOTE** left after the exit. Collateral and approvals were set up before the borrow swap.
 
-[Mainnet output and math checks](demo/mainnet-output.md) records the receipts, blocks, amounts, and position changes.
-The [fork output](demo/output.txt) separately covers larger trades, maturity redemption, and shared liquidity.
+[Mainnet output and math checks](packages/contracts/demo/mainnet-output.md) records the receipts, blocks, amounts, and position changes.
+The [fork output](packages/contracts/demo/output.txt) separately covers larger trades, maturity redemption, and shared liquidity.
 
 ## Base mainnet deployment
 
@@ -200,8 +200,8 @@ The maker authorized the hook and shared ratifier on its Midnight position. Setu
 and 10 mgNOTE to each of Aqua and the hook**, plus **0.003 WETH to the hook**. These are cumulative spending allowances
 and may need renewal after repeated swaps.
 
-Deployment uses [DeployProtocol.s.sol](script/DeployProtocol.s.sol); maker authorization, configuration, and
-registration use [ConfigureMaker.s.sol](script/ConfigureMaker.s.sol). The live transactions above use this desk; the
+Deployment uses [DeployProtocol.s.sol](packages/contracts/script/DeployProtocol.s.sol); maker authorization, configuration, and
+registration use [ConfigureMaker.s.sol](packages/contracts/script/ConfigureMaker.s.sol). The live transactions above use this desk; the
 runnable scenarios below execute independently on a Base fork.
 
 </details>
@@ -212,8 +212,9 @@ Install [Foundry](https://getfoundry.sh/) with Solidity **0.8.30**, **0.8.34**, 
 repository root:
 
 ```bash
+cd packages/contracts
 forge soldeer install
-forge build
+forge build src script demo test
 bash demo/run.sh            # all scenes
 bash demo/run.sh borrow     # one scene
 ```
@@ -243,11 +244,12 @@ travel. Each scene deploys its own Moonglade contracts and starts fresh. Nothing
 
 ## Deploy a desk
 
-Copy `.env.example` to `.env` and set the public deployer/maker addresses, an existing ungated `MARKET_ID`, and maker
-limits. The supplied Aqua/Midnight addresses are for Base; the demo's custom market exists only on the fork. Allow more
-than one day until maturity.
+Work in `packages/contracts`. Copy its `.env.example` to `.env` and set the public deployer/maker addresses, an existing
+ungated `MARKET_ID`, and maker limits. The supplied Aqua/Midnight addresses are for Base; the demo's custom market
+exists only on the fork. Allow more than one day until maturity.
 
 ```bash
+cd packages/contracts
 cp .env.example .env
 # Edit .env before continuing.
 forge soldeer install
@@ -300,20 +302,20 @@ budgets, not deposits. `TRADE_FEE_BPS=30` means 0.30%.
 
 | Component | Responsibility |
 | --- | --- |
-| [`MoongladeNote`](src/note/MoongladeNote.sol) | ERC-20 shares of Midnight credit: mint, repay, wrap/unwrap offers, redeem |
-| [`Factory`](src/note/MoongladeNoteFactory.sol) + [`Ratifier`](src/note/MoongladeNoteRatifier.sol) | Permissionless, deterministic note per market; authorizes only the note's own in-flight offer |
-| [`MoongladeSwap`](src/instructions/MoongladeSwap.sol) + [`Program`](src/libraries/MoongladeProgram.sol) | Custom opcode `0xd0` and the canonical SwapVM program |
-| [`MoongladeRouter`](src/routers/MoongladeRouter.sol) | SwapVM v1.0.2 router extended with the Moonglade instruction |
-| [`YieldSpaceCurve`](src/curves/YieldSpaceCurve.sol) | Default time-aware pricing curve behind a pluggable interface |
-| [`MoongladeDeskHook`](src/hooks/MoongladeDeskHook.sol) | Just-in-time minting, scoped borrowing, debt cancellation, collateral management |
+| [`MoongladeNote`](packages/contracts/src/note/MoongladeNote.sol) | ERC-20 shares of Midnight credit: mint, repay, wrap/unwrap offers, redeem |
+| [`Factory`](packages/contracts/src/note/MoongladeNoteFactory.sol) + [`Ratifier`](packages/contracts/src/note/MoongladeNoteRatifier.sol) | Permissionless, deterministic note per market; authorizes only the note's own in-flight offer |
+| [`MoongladeSwap`](packages/contracts/src/instructions/MoongladeSwap.sol) + [`Program`](packages/contracts/src/libraries/MoongladeProgram.sol) | Custom opcode `0xd0` and the canonical SwapVM program |
+| [`MoongladeRouter`](packages/contracts/src/routers/MoongladeRouter.sol) | SwapVM v1.0.2 router extended with the Moonglade instruction |
+| [`YieldSpaceCurve`](packages/contracts/src/curves/YieldSpaceCurve.sol) | Default time-aware pricing curve behind a pluggable interface |
+| [`MoongladeDeskHook`](packages/contracts/src/hooks/MoongladeDeskHook.sol) | Just-in-time minting, scoped borrowing, debt cancellation, collateral management |
 
 ## Track requirements
 
 | 1inch requirement | Where to see it |
 | --- | --- |
 | **A custom Aqua app with a sophisticated DeFi position** | A desk managing shared cash, tokenized credit, collateral, and debt across its full lifecycle (`lend`, `sell`, `borrow`, `maturity`) |
-| **SwapVM use** | Custom instruction `0xd0` on a router extending SwapVM v1.0.2, plus three settlement hooks; see [router](src/routers/MoongladeRouter.sol) and [opcode table](src/opcodes/MoongladeOpcodes.sol) |
-| **Onchain token transfers in the demo** | Confirmed [mainnet lend, borrow, and exit](demo/mainnet-output.md), plus [fork scenarios](demo/output.txt) moving USDC, WETH, and mgNOTE |
+| **SwapVM use** | Custom instruction `0xd0` on a router extending SwapVM v1.0.2, plus three settlement hooks; see [router](packages/contracts/src/routers/MoongladeRouter.sol) and [opcode table](packages/contracts/src/opcodes/MoongladeOpcodes.sol) |
+| **Onchain token transfers in the demo** | Confirmed [mainnet lend, borrow, and exit](packages/contracts/demo/mainnet-output.md), plus [fork scenarios](packages/contracts/demo/output.txt) moving USDC, WETH, and mgNOTE |
 | **Commit history** | [Repository history](https://github.com/mgnfy-view/moonglade/commits/main/) records the implementation and documentation changes |
 
 ## Prior art and positioning

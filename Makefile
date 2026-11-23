@@ -1,18 +1,18 @@
 .PHONY: install build test fmt check
 
 install:
-	forge soldeer install
+	cd packages/contracts && forge soldeer install
 
 build:
-	forge build
+	cd packages/contracts && forge build
 
 test:
-	forge test -vvv
+	cd packages/contracts && forge test -vvv
 
 fmt:
-	forge fmt
+	cd packages/contracts && forge fmt
 
 check:
-	forge fmt --check
-	forge build
-	forge test -vvv
+	cd packages/contracts && forge fmt --check
+	cd packages/contracts && forge build
+	cd packages/contracts && forge test -vvv

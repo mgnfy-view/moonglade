@@ -2,8 +2,14 @@ name: Smart contracts
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
+    paths:
+      - 'packages/contracts/**'
+      - '.github/workflows/smart-contracts.yml'
   pull_request:
+    paths:
+      - 'packages/contracts/**'
+      - '.github/workflows/smart-contracts.yml'
   workflow_dispatch:
 
 permissions:
@@ -18,6 +24,9 @@ jobs:
     name: Format, build and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/contracts
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
