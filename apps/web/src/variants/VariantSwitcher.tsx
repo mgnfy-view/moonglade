@@ -1,4 +1,5 @@
 import { Moon, Sun } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import { useTheme } from '../theme/ThemeProvider'
 import { VARIANTS_META } from './types'
 import { useLandingVariant } from './variantContext'
@@ -9,6 +10,7 @@ const SHOW_SWITCHER =
 export function VariantSwitcher() {
   const { variant, setVariant } = useLandingVariant()
   const { theme, toggleTheme } = useTheme()
+  const { pathname } = useLocation()
 
   if (!SHOW_SWITCHER) return null
 
@@ -42,7 +44,16 @@ export function VariantSwitcher() {
       <span className="mx-0.5 h-4 w-px bg-hairline" aria-hidden="true" />
       <button
         type="button"
-        onClick={toggleTheme}
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          toggleTheme({
+            ripple: pathname === '/',
+            origin: {
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height / 2,
+            },
+          })
+        }}
         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         title={theme === 'dark' ? 'Daylight Mist' : 'Midnight Desk'}
         className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-xs)] text-ink hover:bg-accent-soft"

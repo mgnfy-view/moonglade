@@ -61,6 +61,30 @@
   }
 }
 
+/* Landing-page water-drop ripple view transition */
+html.theme-rippling,
+html.theme-rippling * {
+  transition: none !important;
+}
+
+html.theme-rippling::view-transition-group(root) {
+  filter: url(#moonglade-water-ripple);
+}
+
+html.theme-rippling::view-transition-old(root),
+html.theme-rippling::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.theme-rippling::view-transition-old(root) {
+  z-index: 1;
+}
+
+html.theme-rippling::view-transition-new(root) {
+  z-index: 2;
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
