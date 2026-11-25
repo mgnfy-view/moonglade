@@ -1,3 +1,8 @@
 {
-  "rewrites": [{ "source": "/((?!assets/|fonts/|favicon.svg).*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/((?!assets/|fonts/|brand/|favicon\\.svg|Moonglade-Whitepaper\\.pdf).*)",
+      "destination": "/index.html"
+    }
+  ]
 }
