@@ -6,10 +6,11 @@ export function MakerBand() {
   return (
     <section
       id="makers"
+      data-landing-section="makers"
       aria-labelledby="makers-heading"
-      className="border-t border-maker-border bg-maker-band px-[var(--page-gutter)] py-16 text-maker-ink md:py-24"
+      className="flex min-h-[85svh] flex-col justify-center border-t border-maker-border bg-maker-band px-[var(--page-gutter)] py-20 text-maker-ink md:min-h-[100svh]"
     >
-      <div className="mx-auto max-w-[var(--container-max)]">
+      <div className="mx-auto w-full max-w-[var(--container-max)]">
         <div className="mb-12 grid grid-cols-1 items-end gap-8 md:grid-cols-2">
           <h2
             id="makers-heading"

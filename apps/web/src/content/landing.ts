@@ -13,30 +13,16 @@ export interface MakerPillar {
   body: string
 }
 
-export interface ProofFill {
-  flow: string
-  block: string
-  txHash: string
-  summary: string
-}
-
 export interface FaqEntry {
   question: string
   answer: string
 }
 
-export const NAV_ITEMS = [
+export const APP_NAV_ITEMS = [
   { label: 'Markets', to: '/markets' },
   { label: 'Portfolio', to: '/portfolio' },
   { label: 'Make markets', to: '/maker' },
   { label: 'Docs', to: '/docs' },
-] as const
-
-export const STACK_ITEMS = [
-  '1inch Aqua',
-  'SwapVM',
-  'Morpho Midnight',
-  '2nd place · ETHGlobal Mumbai',
 ] as const
 
 export const HERO_COPY = {
@@ -101,33 +87,6 @@ export const MAKER_PILLARS: readonly MakerPillar[] = [
   },
 ] as const
 
-export const PROOF_FILLS: readonly ProofFill[] = [
-  {
-    flow: 'Maker strategy shipped',
-    block: '54,083,327',
-    txHash: '0x41d1b8b13b099b369e0c9bdbde6ce258b58de13763b4fb631b6a72a2072a2330',
-    summary: 'Shipped 10 USDC / 22.255409 mgNOTE virtual budgets on Aqua',
-  },
-  {
-    flow: 'Lend',
-    block: '54,116,329',
-    txHash: '0x4ad8fb40fe0fb439ffc71360c97f15d7b32900dbc0ce503af89c6fbe49604e5f',
-    summary: '0.100000 USDC → 0.100753 mgNOTE (tick 4352)',
-  },
-  {
-    flow: 'Exit early',
-    block: '54,117,004',
-    txHash: '0x2b99035044ec4fc310d1ea9c10abc245e84a8d14a0e4a6f03467499d1fd9110d',
-    summary: '0.100750 mgNOTE → 0.099386 USDC (135s later)',
-  },
-  {
-    flow: 'Borrow',
-    block: '54,118,781',
-    txHash: '0x8b8689edca1edcfb10f2a7d359b7b093f9c65f2e23d2964438b68f15f84a5110',
-    summary: '0.100000 USDC received · 0.101397 debt against WETH',
-  },
-] as const
-
 export const FAQ_ITEMS: readonly FaqEntry[] = [
   {
     question: 'Why use a desk instead of waiting on an order book?',
@@ -148,5 +107,10 @@ export const FAQ_ITEMS: readonly FaqEntry[] = [
     question: 'How do early exits and maturity redemption differ?',
     answer:
       'Early exit sells mgNOTE into a live desk at its available quote before the 1-day pre-maturity cutoff (not guaranteed at par). At maturity, redeem mgNOTE directly on the note contract for its share of repaid Midnight credit.',
+  },
+  {
+    question: 'How do makers provide liquidity without locking funds in a pool?',
+    answer:
+      'Makers register virtual budgets on 1inch Aqua while keeping balances in their own wallet. Cash and collateral move only during settlement, and the same wallet balance can back multiple strategies simultaneously.',
   },
 ] as const

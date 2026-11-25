@@ -6,28 +6,24 @@ export function FlowsGrid() {
   return (
     <section
       id="flows"
+      data-landing-section="flows"
       aria-labelledby="flows-heading"
-      className="border-t border-hairline px-[var(--page-gutter)] py-16 md:py-24"
+      className="flex min-h-[85svh] flex-col justify-center border-t border-hairline px-[var(--page-gutter)] py-20 md:min-h-[100svh]"
     >
-      <div className="mx-auto max-w-[var(--container-max)]">
+      <div className="mx-auto w-full max-w-[var(--container-max)]">
         <h2
           id="flows-heading"
-          className="mb-10 text-[clamp(30px,3.4vw,48px)] font-medium leading-[1.1] text-ink"
+          className="mb-12 text-[clamp(30px,3.4vw,48px)] font-medium leading-[1.1] text-ink"
         >
           Fixed-rate loans. Swap-simple.
         </h2>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {FLOW_SPECS.map((flow) => (
-            <article
-              key={flow.id}
-              className="flex flex-col border-t border-hairline pt-6"
-            >
+            <article key={flow.id} className="flex flex-col border-t border-hairline pt-6">
               <h3 className="mb-3 text-[21px] font-medium text-ink">{flow.label}</h3>
               <p className="mb-4 text-sm font-medium text-accent">{flow.pathLabel}</p>
-              <p className="mb-6 text-[15px] leading-[1.65] text-ink-secondary">
-                {flow.summary}
-              </p>
+              <p className="mb-6 text-[15px] leading-[1.65] text-ink-secondary">{flow.summary}</p>
               <Link
                 to={flow.route}
                 className="mt-auto inline-flex min-h-[44px] items-center gap-2.5 text-sm font-medium text-ink hover:text-accent hover:underline hover:underline-offset-4"
