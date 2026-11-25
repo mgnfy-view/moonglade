@@ -17,13 +17,13 @@ export const VARIANTS_META: readonly VariantMeta[] = [
   {
     id: 'v1',
     shortLabel: 'v1',
-    name: 'Hairline Bar',
-    summary: 'Sticky Swiss hairline header with scroll hairline',
+    name: 'Morphing Top Bar + ⌘K',
+    summary: 'Context-aware top bar with dynamic section pill',
   },
   {
     id: 'v3',
     shortLabel: 'v3',
-    name: 'Morphing Strip + ⌘K',
-    summary: 'Flush header morphing into centered floating pill with ⌘K',
+    name: 'Left Progress Rail',
+    summary: 'Left-hand navigation rail tracking scroll progress',
   },
 ] as const

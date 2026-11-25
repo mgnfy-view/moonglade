@@ -1,21 +1,27 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { DepthSection } from '../../components/shared/DepthSection'
+import { BuiltOnStrip } from '../../components/shared/BuiltOnStrip'
+import { FaqSection } from '../../components/shared/FaqSection'
 import { FlowsGrid } from '../../components/shared/FlowsGrid'
 import { KineticMoonHorizon } from '../../components/shared/KineticMoonHorizon'
 import { MakerBand } from '../../components/shared/MakerBand'
-import { ProofLedger } from '../../components/shared/ProofLedger'
-import { HERO_COPY, STACK_ITEMS } from '../../content/landing'
+import { ProtocolStats } from '../../components/shared/ProtocolStats'
+import { HERO_COPY } from '../../content/landing'
 
 export default function V3Landing() {
   return (
     <main>
-      <section aria-labelledby="v3-hero-heading" className="mx-auto max-w-[var(--container-max)] px-[var(--page-gutter)]">
-        <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-0">
-          <div className="min-w-0 py-10 md:col-span-7 md:border-r md:border-hairline md:py-16 md:pr-12">
+      <section
+        id="overview"
+        data-landing-section="overview"
+        aria-labelledby="v3-hero-heading"
+        className="mx-auto flex min-h-[calc(100svh-64px)] max-w-[var(--container-max)] flex-col justify-between px-[var(--page-gutter)] md:min-h-svh"
+      >
+        <div className="my-auto grid grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-0">
+          <div className="min-w-0 py-8 md:col-span-7 md:border-r md:border-hairline md:py-12 md:pr-12">
             <h1
               id="v3-hero-heading"
-              className="mb-6 text-[clamp(44px,6vw,84px)] font-medium leading-[0.98] tracking-[-0.02em] text-ink"
+              className="mb-6 text-[clamp(44px,5.8vw,82px)] font-medium leading-[0.98] tracking-[-0.02em] text-ink"
             >
               {HERO_COPY.headlinePrimary}
               <span className="mt-2 block text-[0.68em] text-ink-secondary">
@@ -37,28 +43,18 @@ export default function V3Landing() {
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-[420px] pb-8 md:col-span-5 md:max-w-none md:py-10 md:pl-10">
+          <div className="mx-auto w-full max-w-[400px] pb-6 md:col-span-5 md:max-w-none md:py-8 md:pl-10">
             <KineticMoonHorizon />
           </div>
         </div>
 
-        <div
-          aria-label="Protocol stack"
-          className="flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-t border-hairline py-4 text-xs text-ink-muted"
-        >
-          <span className="font-medium uppercase tracking-[0.06em]">Built on</span>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm font-medium text-ink">
-            {STACK_ITEMS.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
-        </div>
+        <BuiltOnStrip />
       </section>
 
       <FlowsGrid />
       <MakerBand />
-      <ProofLedger />
-      <DepthSection />
+      <ProtocolStats />
+      <FaqSection />
     </main>
   )
 }

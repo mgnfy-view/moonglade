@@ -1,17 +1,23 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { DepthSection } from '../../components/shared/DepthSection'
+import { BuiltOnStrip } from '../../components/shared/BuiltOnStrip'
+import { FaqSection } from '../../components/shared/FaqSection'
 import { FlowsGrid } from '../../components/shared/FlowsGrid'
 import { KineticMoonHorizon } from '../../components/shared/KineticMoonHorizon'
 import { MakerBand } from '../../components/shared/MakerBand'
-import { ProofLedger } from '../../components/shared/ProofLedger'
-import { HERO_COPY, STACK_ITEMS } from '../../content/landing'
+import { ProtocolStats } from '../../components/shared/ProtocolStats'
+import { HERO_COPY } from '../../content/landing'
 
 export default function V1Landing() {
   return (
     <main>
-      <section aria-labelledby="v1-hero-heading" className="mx-auto max-w-[var(--container-max)] px-[var(--page-gutter)] pt-8 md:pt-14">
-        <div className="grid grid-cols-1 items-center gap-10 pb-10 md:grid-cols-12 md:gap-12 md:pb-16">
+      <section
+        id="overview"
+        data-landing-section="overview"
+        aria-labelledby="v1-hero-heading"
+        className="mx-auto flex min-h-[calc(100svh-76px)] max-w-[var(--container-max)] flex-col justify-between px-[var(--page-gutter)] pt-8 md:pt-12"
+      >
+        <div className="my-auto grid grid-cols-1 items-center gap-10 py-6 md:grid-cols-12 md:gap-12">
           <div className="min-w-0 md:col-span-7">
             <h1
               id="v1-hero-heading"
@@ -42,23 +48,13 @@ export default function V1Landing() {
           </div>
         </div>
 
-        <div
-          aria-label="Protocol stack"
-          className="flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-t border-hairline py-4 text-xs text-ink-muted"
-        >
-          <span className="font-medium uppercase tracking-[0.06em]">Built on</span>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm font-medium text-ink">
-            {STACK_ITEMS.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
-        </div>
+        <BuiltOnStrip />
       </section>
 
       <FlowsGrid />
       <MakerBand />
-      <ProofLedger />
-      <DepthSection />
+      <ProtocolStats />
+      <FaqSection />
     </main>
   )
 }
