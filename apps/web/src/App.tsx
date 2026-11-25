@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { formatUnits } from 'viem'
 import { useMoonglade, type TradeMode } from './hooks/useMoonglade'
+import { LandingScrollProvider } from './hooks/useSectionScroll'
 import MakersPage from './MakersPage'
 import CompletionModal from './CompletionModal'
 import { MAKERS, shortAddress, tradeMode, type ListedMaker } from './lib/makers'
@@ -400,10 +401,12 @@ function ActiveShellRoutes() {
 export default function App() {
   return (
     <VariantProvider>
-      <a className="skip-link" href="#content">
-        Skip to content
-      </a>
-      <ActiveShellRoutes />
+      <LandingScrollProvider>
+        <a className="skip-link" href="#content">
+          Skip to content
+        </a>
+        <ActiveShellRoutes />
+      </LandingScrollProvider>
     </VariantProvider>
   )
 }
