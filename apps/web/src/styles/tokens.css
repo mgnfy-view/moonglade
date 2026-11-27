@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: Switzer;
+  src: url('/fonts/Switzer-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Switzer;
+  src: url('/fonts/Switzer-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Switzer;
+  src: url('/fonts/Switzer-Semibold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root,
+[data-theme='light'] {
+  /* Brand palette authority (docs/brand/moonglade.gpl) */
+  --palette-midnight-950: #080156;
+  --palette-midnight-500: #09015d;
+  --palette-indigo-400: #1b0ea8;
+  --palette-indigo-300: #4030de;
+  --palette-lavender-200: #8e86e0;
+  --palette-lavender-100: #d3d0ee;
+  --palette-mist-50: #f2f1f9;
+  --palette-silver: #c9cbd9;
+  --palette-gold: #f2d38a;
+  --palette-teal: #5bb5a8;
+  --palette-rose: #d98ba0;
+
+  /* Semantic tokens — Light ("Daylight Mist") */
+  --bg-canvas: #faf9fd;
+  --bg-surface: #f2f1f9;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #ebe9f6;
+  --bg-glass: rgba(250, 249, 253, 0.9);
+  --bg-maker-band: #080156;
+  --bg-maker-surface: #100870;
+
+  --border-hairline: #d3d0ee;
+  --border-strong: rgba(8, 1, 86, 0.28);
+  --border-maker: rgba(211, 208, 238, 0.22);
+
+  --text-primary: #080156;
+  --text-secondary: #464178;
+  --text-muted: #5d578e;
+  --text-maker-primary: #f2f1f9;
+  --text-maker-secondary: #c9cbd9;
+
+  --accent-primary: #4030de;
+  --accent-primary-hover: #2d1ec4;
+  --accent-on-primary: #f2f1f9;
+  --accent-soft: rgba(64, 48, 222, 0.08);
+
+  --status-positive: #1d6b5f;
+  --status-positive-dot: #5bb5a8;
+  --status-danger: #94344e;
+  --status-danger-bg: rgba(217, 139, 160, 0.16);
+
+  /* Horizon reflection artwork colors */
+  --moon-fill: #080156;
+  --moon-line-strong: #080156;
+  --moon-line-accent: #4030de;
+  --moon-line-soft: #8e86e0;
+
+  /* Typography & layout geometry */
+  --font-sans: Switzer, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --container-max: 1440px;
+  --page-gutter: clamp(18px, 5vw, 72px);
+  --swap-gutter: clamp(16px, 4vw, 55px);
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --z-header: 40;
+  --z-switcher: 50;
+  --z-modal: 80;
+
+  /* Legacy aliases kept for untouched trading & maker views */
+  --night: #080156;
+  --night-alt: #09015d;
+  --surface: #1b0ea8;
+  --accent: #4030de;
+  --lavender: #8e86e0;
+  --border: var(--border-hairline);
+  --mist: #f2f1f9;
+  --silver: #c9cbd9;
+  --gold: #f2d38a;
+  --teal: #5bb5a8;
+  --rose: #d98ba0;
+}
+
+[data-theme='dark'] {
+  /* Semantic tokens — Dark ("Midnight Desk") */
+  --bg-canvas: #050129;
+  --bg-surface: #080156;
+  --bg-elevated: #110a6b;
+  --bg-subtle: #0d0652;
+  --bg-glass: rgba(5, 1, 41, 0.9);
+  --bg-maker-band: #0d0652;
+  --bg-maker-surface: #160e7d;
+
+  --border-hairline: rgba(142, 134, 224, 0.24);
+  --border-strong: rgba(211, 208, 238, 0.42);
+  --border-maker: rgba(211, 208, 238, 0.24);
+
+  --text-primary: #f2f1f9;
+  --text-secondary: #b8b2e8;
+  --text-muted: #9b94db;
+  --text-maker-primary: #f2f1f9;
+  --text-maker-secondary: #c9cbd9;
+
+  --accent-primary: #7c71ff;
+  --accent-primary-hover: #978eff;
+  --accent-on-primary: #050129;
+  --accent-soft: rgba(124, 113, 255, 0.14);
+
+  --status-positive: #5bb5a8;
+  --status-positive-dot: #5bb5a8;
+  --status-danger: #e49ab0;
+  --status-danger-bg: rgba(217, 139, 160, 0.14);
+
+  --moon-fill: #f2f1f9;
+  --moon-line-strong: #f2f1f9;
+  --moon-line-accent: #7c71ff;
+  --moon-line-soft: #8e86e0;
+
+  --border: var(--border-hairline);
+}
+
+@theme inline {
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-subtle: var(--bg-subtle);
+  --color-glass: var(--bg-glass);
+  --color-maker-band: var(--bg-maker-band);
+  --color-maker-surface: var(--bg-maker-surface);
+  --color-hairline: var(--border-hairline);
+  --color-hairline-strong: var(--border-strong);
+  --color-maker-border: var(--border-maker);
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-maker-ink: var(--text-maker-primary);
+  --color-maker-muted: var(--text-maker-secondary);
+  --color-accent: var(--accent-primary);
+  --color-accent-hover: var(--accent-primary-hover);
+  --color-accent-on: var(--accent-on-primary);
+  --color-accent-soft: var(--accent-soft);
+  --color-positive: var(--status-positive);
+  --color-danger: var(--status-danger);
+  --color-gold: var(--palette-gold);
+  --color-lavender: var(--palette-lavender-200);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
